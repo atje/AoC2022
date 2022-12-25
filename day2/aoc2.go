@@ -92,6 +92,7 @@ func decodeMove(m string) int {
 }
 
 var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
+var dbgFlag = flag.Bool("d", false, "debug flag")
 
 func main() {
 	var a = [3][3]int{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}}
@@ -115,12 +116,16 @@ func main() {
 
 	score := 0
 	for i, line := range lines {
-		fmt.Print("round ", i, ": ", line)
+		if *dbgFlag {
+			fmt.Print("round ", i, ": ", line)
+		}
 		s := strings.Split(line, " ")
 
 		// Add points for win or draw
 		score += a[decodeMove(s[0])][decodeMove(s[1])]
-		fmt.Println("--> score", score)
+		if *dbgFlag {
+			fmt.Println("--> score", score)
+		}
 	}
 
 	fmt.Println("Total score:", score)
