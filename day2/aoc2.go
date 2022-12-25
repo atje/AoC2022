@@ -61,9 +61,9 @@ C	W	L	D
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"AoC2022/aoc_helpers"
@@ -91,15 +91,24 @@ func decodeMove(m string) int {
 	return ret
 }
 
+var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
+
 func main() {
 	var a = [3][3]int{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}}
 
-	if len(os.Args) < 2 {
+	flag.Parse()
+	args := flag.Args()
+
+	if len(args) == 0 {
 		fmt.Println("Missing parameter, provide file name!")
 		return
 	}
+	if *partFlag > 1 {
+		fmt.Println("p flag not 0 or 1, aborting!")
+		return
+	}
 
-	lines, err := aoc_helpers.ReadLines(os.Args[1])
+	lines, err := aoc_helpers.ReadLines(args[0])
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
