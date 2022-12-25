@@ -52,9 +52,9 @@ Paper beats Rock
 Scissors beats Rock
 
 	X	Y	Z
-A	D	L	W
-B	W	D	L
-C	L	W	D
+A	D	W	L
+B	L	D	W
+C	W	L	D
 
 */
 
@@ -64,12 +64,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
-	"../aoc_helpers"
+	"AoC2022/aoc_helpers"
 )
 
 func main() {
-	if len(os.Args) < 2 {
+	var a = [3][3]int{{3, 6, 0},{0, 3, 6},{6, 0, 3}}
+	
+		if len(os.Args) < 2 {
 		fmt.Println("Missing parameter, provide file name!")
 		return
 	}
@@ -80,15 +83,44 @@ func main() {
 	}
 
 	score := 0
-	for _, line := range lines {
+	for i, line := range lines {
+		d1 := -1
+		d2 := -1
+
+		fmt.Print("round ", i, ": ", line)
+		s := strings.Split(line, " ")
+
+		// Decodee opponent's move
 		switch {
-		case line == "A":
-			score += 1
-		case line == "B":
-			score += 2
-		case line == "C":
-			score += 3
+		case s[0] == "A":  
+			d1 = 0
+		case s[0] == "B":
+			d1 = 1
+		case s[0] == "C":
+			d1 = 2
+		default :
+			fmt.Println("Unknown input: ", s[0])
 		}
+
+		// Decode my move
+		// Add points for selection
+		switch {
+		case s[1] == "X" : 
+			d2 = 0
+			score += 1
+		case s[1] == "Y" : 
+			d2 = 1
+			score += 2
+		case s[1] == "Z" : 
+			d2 = 2
+			score += 3
+		default :
+			fmt.Println("Unknown input: ", s[0])
+		}
+
+		// Add points for win or draw
+		score += a[d1][d2]
+		fmt.Println("--> score", score)
 	}
 
 	fmt.Println("Total score:", score)
