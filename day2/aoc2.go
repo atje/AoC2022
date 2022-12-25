@@ -105,7 +105,7 @@ var dbgFlag = flag.Bool("d", false, "debug flag")
 
 var costArr = [2][3][3]int{{
 	{4, 8, 3}, {1, 5, 9}, {7, 2, 6}},
-	{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}},
+	{{3, 4, 8}, {1, 5, 9}, {2, 6, 7}},
 }
 
 func main() {
