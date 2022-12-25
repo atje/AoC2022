@@ -56,6 +56,15 @@ A	D	W	L
 B	L	D	W
 C	W	L	D
 
+
+
+--- Part 2 ---
+
+X = Loose
+Y = Draw
+Z = Win
+
+
 */
 
 package main
@@ -94,8 +103,12 @@ func decodeMove(m string) int {
 var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
 var dbgFlag = flag.Bool("d", false, "debug flag")
 
+var costArr = [2][3][3]int{{
+	{4, 8, 3}, {1, 5, 9}, {7, 2, 6}},
+	{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}},
+}
+
 func main() {
-	var a = [3][3]int{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}}
 
 	flag.Parse()
 	args := flag.Args()
@@ -122,7 +135,7 @@ func main() {
 		s := strings.Split(line, " ")
 
 		// Add points for win or draw
-		score += a[decodeMove(s[0])][decodeMove(s[1])]
+		score += costArr[*partFlag][decodeMove(s[0])][decodeMove(s[1])]
 		if *dbgFlag {
 			fmt.Println("--> score", score)
 		}
