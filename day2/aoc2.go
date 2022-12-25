@@ -69,10 +69,32 @@ import (
 	"AoC2022/aoc_helpers"
 )
 
+func decodeMove(m string) int {
+	var ret int = -1
+
+	switch {
+	case m == "A":
+		ret = 0
+	case m == "X":
+		ret = 0
+	case m == "B":
+		ret = 1
+	case m == "Y":
+		ret = 1
+	case m == "C":
+		ret = 2
+	case m == "Z":
+		ret = 2
+	default:
+		fmt.Println("Unknown input: ", m)
+	}
+	return ret
+}
+
 func main() {
-	var a = [3][3]int{{3, 6, 0},{0, 3, 6},{6, 0, 3}}
-	
-		if len(os.Args) < 2 {
+	var a = [3][3]int{{4, 8, 3}, {1, 5, 9}, {7, 2, 6}}
+
+	if len(os.Args) < 2 {
 		fmt.Println("Missing parameter, provide file name!")
 		return
 	}
@@ -84,42 +106,11 @@ func main() {
 
 	score := 0
 	for i, line := range lines {
-		d1 := -1
-		d2 := -1
-
 		fmt.Print("round ", i, ": ", line)
 		s := strings.Split(line, " ")
 
-		// Decodee opponent's move
-		switch {
-		case s[0] == "A":  
-			d1 = 0
-		case s[0] == "B":
-			d1 = 1
-		case s[0] == "C":
-			d1 = 2
-		default :
-			fmt.Println("Unknown input: ", s[0])
-		}
-
-		// Decode my move
-		// Add points for selection
-		switch {
-		case s[1] == "X" : 
-			d2 = 0
-			score += 1
-		case s[1] == "Y" : 
-			d2 = 1
-			score += 2
-		case s[1] == "Z" : 
-			d2 = 2
-			score += 3
-		default :
-			fmt.Println("Unknown input: ", s[0])
-		}
-
 		// Add points for win or draw
-		score += a[d1][d2]
+		score += a[decodeMove(s[0])][decodeMove(s[1])]
 		fmt.Println("--> score", score)
 	}
 
