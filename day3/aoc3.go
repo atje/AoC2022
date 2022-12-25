@@ -73,10 +73,6 @@ func main() {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	// For each row
-	// For each char in str2
-	// check if the char is in str1
-	// then add it to res
 	score := 0
 	btot := bytes.Buffer{}
 	for i, line := range lines {
