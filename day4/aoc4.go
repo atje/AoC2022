@@ -72,21 +72,26 @@ func main() {
 		}
 
 		// Part 1
-		if e1p1 >= e2p1 && e1p2 <= e2p2 {
+		if checkInRange(e1p1, e2p1, e2p2) && checkInRange(e1p2, e2p1, e2p2) ||
+			checkInRange(e2p1, e1p1, e1p2) && checkInRange(e2p2, e1p1, e1p2) {
 			tot1++
-
-			if *dbgFlag {
-				fmt.Println("Found p1 within p2, row", i)
-			}
-
-		} else if e2p1 >= e1p1 && e2p2 <= e1p2 {
-			tot1++
-
-			if *dbgFlag {
-				fmt.Println("Found p2 within p1, row", i)
-			}
 		}
+		/*
+			if e1p1 >= e2p1 && e1p2 <= e2p2 {
+				tot1++
 
+				if *dbgFlag {
+					fmt.Println("Found p1 within p2, row", i)
+				}
+
+			} else if e2p1 >= e1p1 && e2p2 <= e1p2 {
+				tot1++
+
+				if *dbgFlag {
+					fmt.Println("Found p2 within p1, row", i)
+				}
+			}
+		*/
 		// Part 2
 		if checkInRange(e1p1, e2p1, e2p2) || checkInRange(e1p2, e2p1, e2p2) ||
 			checkInRange(e2p1, e1p1, e1p2) || checkInRange(e2p2, e1p1, e1p2) {
