@@ -25,6 +25,13 @@ func prettyPrintRange(start int, end int) {
 	fmt.Print("\t", start, "-", end, "\n")
 }
 
+func checkInRange(v int, start int, end int) bool {
+	if v >= start && v <= end {
+		return true
+	}
+	return false
+}
+
 func main() {
 
 	flag.Parse()
@@ -45,6 +52,7 @@ func main() {
 	}
 
 	tot1 := 0
+	tot2 := 0
 	for i := 0; i < len(lines); i++ {
 		if *dbgFlag {
 			fmt.Println("Row #", i, ": ", lines[i])
@@ -63,6 +71,7 @@ func main() {
 			prettyPrintRange(e2p1, e2p2)
 		}
 
+		// Part 1
 		if e1p1 >= e2p1 && e1p2 <= e2p2 {
 			tot1++
 
@@ -78,10 +87,17 @@ func main() {
 			}
 		}
 
+		// Part 2
+		if checkInRange(e1p1, e2p1, e2p2) || checkInRange(e1p2, e2p1, e2p2) ||
+			checkInRange(e2p1, e1p1, e1p2) || checkInRange(e2p2, e1p1, e1p2) {
+			tot2++
+		}
 	}
 
 	fmt.Println("*** Part 1 ***")
 	fmt.Println("Complete overlaps:", tot1)
 
 	// Part two
+	fmt.Println("*** Part 2 ***")
+	fmt.Println("Partial or complete overlaps:", tot2)
 }
