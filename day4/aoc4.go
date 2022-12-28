@@ -9,17 +9,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
 )
 
 var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
 var dbgFlag = flag.Bool("d", false, "debug flag")
 
-func prettyPrintRange(startStr string, endStr string) {
-	start, _ := strconv.Atoi(startStr)
-	end, _ := strconv.Atoi(endStr)
-	for i := 1; i < end; i++ {
+func prettyPrintRange(start int, end int) {
+	for i := 1; i <= end; i++ {
 		if i < start {
 			fmt.Print(".")
 		} else {
@@ -54,26 +50,16 @@ func main() {
 			fmt.Println("Row #", i, ": ", lines[i])
 		}
 
-		e1, e2, found := strings.Cut(lines[i], ",")
-		if !found {
-			fmt.Println("Error splitting string into pairs: ", lines[i])
+		var e1p1, e1p2, e2p1, e2p2 int
+
+		n, _ := fmt.Sscanf(lines[i], "%d-%d,%d-%d", &e1p1, &e1p2, &e2p1, &e2p2)
+		if n != 4 {
+			fmt.Println("Error scanning line #", i, ", n=", n, ":", lines[i])
 			return
-		}
-		e1p1, e1p2, found := strings.Cut(e1, "-")
-		if !found {
-			fmt.Println("Error splitting string into numbers: ", lines[i])
-			return
-		}
-		if *dbgFlag {
-			prettyPrintRange(e1p1, e1p2)
 		}
 
-		e2p1, e2p2, found := strings.Cut(e2, "-")
-		if !found {
-			fmt.Println("Error splitting string into numbers: ", lines[i])
-			return
-		}
 		if *dbgFlag {
+			prettyPrintRange(e1p1, e1p2)
 			prettyPrintRange(e2p1, e2p2)
 		}
 
@@ -81,14 +67,14 @@ func main() {
 			tot1++
 
 			if *dbgFlag {
-				fmt.Println("Found p1 within p2, row", i, ": ", e1, ",", e2)
+				fmt.Println("Found p1 within p2, row", i)
 			}
 
 		} else if e2p1 >= e1p1 && e2p2 <= e1p2 {
 			tot1++
 
 			if *dbgFlag {
-				fmt.Println("Found p2 within p1, row", i, ": ", e1, ",", e2)
+				fmt.Println("Found p2 within p1, row", i)
 			}
 		}
 
