@@ -6,7 +6,7 @@ package main
 
 import (
 	"AoC2022/aoc_helpers"
-	"container/list"
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -16,32 +16,63 @@ import (
 var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
 var dbgFlag = flag.Bool("d", false, "debug flag")
 
-func loadCrates(lines []string) (int, []list.List) {
-	l := []list.List{}
+func loadCrates(lines []string) (int, [][]rune) {
+	l := make([][]rune, 10)
 	n := 0
 
 	stop := false
-	re := regexp.MustCompile(`\s{4}|\[[A-Z]\]`)
+	re := regexp.MustCompile(`\s{4}|\[([A-Z])\]`)
 	for !stop && n < len(lines) {
 
-		sarr := re.FindAllString(lines[n], -1)
-		fmt.Printf("%q\n", sarr)
+		sarr := re.FindAllStringSubmatch(lines[n], -1)
+		//fmt.Printf("%q\n", sarr)
 		if sarr == nil {
 			stop = true
+		} else {
+			for i, str := range sarr {
+				if str[1] != "" {
+					chars := []rune(str[1])
+					l[i+1] = append(l[i+1], chars[0])
+				}
+			}
 		}
 		n++
 
 	}
+	//fmt.Printf("%q\n", l)
 	return n, l
 
 }
 
-func moveCrates(l []list.List, spec string) {
-	fmt.Println("Moving :", spec)
+func moveCrates(l [][]rune, spec string) [][]rune {
+	//fmt.Println("Moving :", spec)
+
+	var from, to, quant int
+	n, _ := fmt.Sscanf(spec, `move %d from %d to %d`, &quant, &from, &to)
+	if n != 3 {
+		fmt.Println("Failed to read spec: ", spec)
+		return l
+	}
+	for d := 0; d < quant; d++ {
+		x, a := l[from][0], l[from][1:]
+		l[from] = a
+		//fmt.Println("crate ", x)
+
+		l[to] = append([]rune{x}, l[to]...)
+	}
+	//fmt.Printf("%q\n", l)
+	return l
 }
 
-func topCrates([]list.List) string {
-	return "empty"
+func printTopCrates(l [][]rune) {
+	chars := bytes.Buffer{}
+
+	for i := 1; i < len(l); i++ {
+		if len(l[i]) > 0 {
+			chars.WriteRune(l[i][0])
+		}
+	}
+	fmt.Println("Top crates per row:", chars.String())
 }
 
 func main() {
@@ -75,10 +106,8 @@ func main() {
 		moveCrates(stacks, lines[i])
 	}
 
-	top := topCrates(stacks)
-
 	fmt.Println("*** Part 1 ***")
-	fmt.Println("Top crates per row:", top)
+	printTopCrates(stacks)
 
 	// Part two
 	fmt.Println("*** Part 2 ***")
