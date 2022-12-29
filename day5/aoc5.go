@@ -39,28 +39,45 @@ func loadCrates(lines []string) (int, [][]rune) {
 		n++
 
 	}
-	//fmt.Printf("%q\n", l)
+	if *dbgFlag {
+		fmt.Printf("Initial crates: \n%q\n", l)
+	}
 	return n, l
 
 }
 
-func moveCrates(l [][]rune, spec string) [][]rune {
-	//fmt.Println("Moving :", spec)
-
+func moveCrates(l [][]rune, spec string, part int) [][]rune {
+	if *dbgFlag {
+		fmt.Println("Moving :", spec)
+	}
 	var from, to, quant int
 	n, _ := fmt.Sscanf(spec, `move %d from %d to %d`, &quant, &from, &to)
 	if n != 3 {
 		fmt.Println("Failed to read spec: ", spec)
 		return l
 	}
-	for d := 0; d < quant; d++ {
-		x, a := l[from][0], l[from][1:]
-		l[from] = a
-		//fmt.Println("crate ", x)
+	if part == 0 {
+		for d := 0; d < quant; d++ {
+			x, a := l[from][0], l[from][1:]
+			l[from] = a
+			//fmt.Println("crate ", x)
 
-		l[to] = append([]rune{x}, l[to]...)
+			l[to] = append([]rune{x}, l[to]...)
+		}
+	} else {
+		if quant == 1 {
+			x, a := l[from][0], l[from][quant:]
+			l[from] = a
+			l[to] = append([]rune{x}, l[to]...)
+		} else {
+			x, a := l[from][0:quant], l[from][quant:]
+			l[from] = a
+			l[to] = append(x, l[to]...)
+		}
 	}
-	//fmt.Printf("%q\n", l)
+	if *dbgFlag {
+		fmt.Printf("%q\n", l)
+	}
 	return l
 }
 
@@ -103,7 +120,7 @@ func main() {
 
 	// Move crates according to spec
 	for i := n + 1; i < len(lines); i++ {
-		moveCrates(stacks, lines[i])
+		moveCrates(stacks, lines[i], *partFlag)
 	}
 
 	fmt.Println("*** Part 1 ***")
