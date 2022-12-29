@@ -71,7 +71,10 @@ func moveCrates(l [][]rune, spec string, part int) [][]rune {
 			l[to] = append([]rune{x}, l[to]...)
 		} else {
 			x, a := l[from][0:quant], l[from][quant:]
-			l[from] = a
+			//fmt.Println("x", string(x), ", a", string(a))
+			copyA := make([]rune, len(a))
+			copy(copyA, a)
+			l[from] = copyA
 			l[to] = append(x, l[to]...)
 		}
 	}
@@ -87,9 +90,39 @@ func printTopCrates(l [][]rune) {
 	for i := 1; i < len(l); i++ {
 		if len(l[i]) > 0 {
 			chars.WriteRune(l[i][0])
+		} else {
+			chars.WriteRune(rune(' '))
 		}
 	}
 	fmt.Println("Top crates per row:", chars.String())
+}
+
+// Count number of each crate type 'A', 'B', 'C', etc
+func countCrateTypes(l [][]rune) map[rune]int {
+	m := make(map[rune]int)
+
+	for i := 1; i < len(l); i++ {
+		if len(l[i]) > 0 {
+			for j := 0; j < len(l[i]); j++ {
+				m[l[i][j]] = m[l[i][j]] + 1
+			}
+		}
+	}
+	return m
+}
+
+func isEqualCrateTypes(map1 map[rune]int, map2 map[rune]int) bool {
+
+	for stack := range map1 {
+		if map1[stack] != map2[stack] {
+			if *dbgFlag {
+				fmt.Println("Crate unequal:", string(stack), map1[stack], map2[stack])
+			}
+			return false
+		}
+	}
+
+	return true
 }
 
 func main() {
@@ -117,10 +150,14 @@ func main() {
 		fmt.Println("Failed loading crates")
 		return
 	}
+	numCrates := countCrateTypes(stacks)
 
 	// Move crates according to spec
 	for i := n + 1; i < len(lines); i++ {
 		moveCrates(stacks, lines[i], *partFlag)
+		if !isEqualCrateTypes(numCrates, countCrateTypes(stacks)) {
+			log.Fatalf("Crate corruption detected")
+		}
 	}
 
 	fmt.Println("*** Part 1 ***")
