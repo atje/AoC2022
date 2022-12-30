@@ -67,20 +67,22 @@ func main() {
 	}
 
 	pos := 0
+	nchar := 4
+
+	if *partFlag == 1 {
+		nchar = 14
+	}
+
 	lines, err := aoc_helpers.ReadLines(args[0])
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	// Part one
-	fmt.Println("*** Part 1 ***")
+	fmt.Println("*** Part", *partFlag+1, "***")
 	for i, line := range lines {
-		pos = findMarker(line, 4)
+		pos = findMarker(line, nchar)
 		if pos > 0 {
 			fmt.Println("Line", i, ", found marker at position", pos)
 		}
 	}
-
-	// Part two
-	fmt.Println("*** Part 2 ***")
 }
