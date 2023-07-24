@@ -19,15 +19,32 @@ var dbgFlag = flag.Bool("d", false, "debug flag")
 
 var total_size uint64
 
+type dirs []*dir
+
 // First, define directory tree struct with methods
 type dir struct {
 	name      string
 	size      uint64
 	parentdir *dir
-	subdirs   []*dir
+	subdirs   dirs
+}
+
+func (slice dirs) Len() int {
+	return len(slice)
+}
+
+func (slice dirs) Less(i, j int) bool {
+	return slice[i].size > slice[j].size
+}
+
+func (slice dirs) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 func (d *dir) add_subdir(name string) {
+	if *dbgFlag {
+		fmt.Println("Adding subdirectory", name, "to directory", d.name)
+	}
 	d.subdirs = append(d.subdirs, &dir{name: name, size: 0, parentdir: d})
 }
 
@@ -40,46 +57,53 @@ func (d *dir) find_subdir(name string) *dir {
 	return nil
 }
 
+/*
+* Add filesize to directory and all it's parent directories
+ */
 func (d *dir) add_size(n uint64) {
 	d.size = d.size + n
-	//fmt.Println("new size ", d.size)
+	if *dbgFlag {
+		fmt.Println("dir", d.name, "new size ", d.size)
+	}
+	if d.parentdir != nil {
+		d.parentdir.add_size(n)
+	}
 }
 
-func (d *dir) tree(prefix string, max_size uint64) uint64 {
-	size := d.size
+/*
+* Print a tree of directories, with subdirectories indented
+ */
+func (d *dir) tree(prefix string) {
+	fmt.Println(prefix, "- ", d.name, "(dir, size=", d.size)
 	for _, subdir := range d.subdirs {
-		size += subdir.tree(prefix+"  ", max_size)
+		subdir.tree(prefix + "  ")
 	}
-	if size <= max_size {
-		fmt.Println(prefix, "- ", d.name, "(dir, size=", size)
-		total_size += size
-	}
-	return size
 }
 
-type bySize []dir
+/*
+* Create a flat list of directories, sorted by size (largest first)
+ */
+func flatten(d *dir) []*dir {
 
-func (a bySize) Len() int           { return len(a) }
-func (a bySize) Less(i, j int) bool { return a[i].size > a[j].size }
-func (a bySize) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+	df := []*dir{d}
 
-func (d *dir) find_smallest2delete(delta uint64) *dir {
-	if d.size > delta {
-		sort.Sort(bySize(d.subdirs))
-
-		for i, subdir := range d.subdirs {
-			if subdir.size < delta {
-				if i == 0 {
-					return d
-				} else {
-					return subdir.find_smallest2delete(delta)
-				}
-
-			}
-		}
-		return d
+	for _, subdir := range d.subdirs {
+		df = append(df, flatten(subdir)...)
 	}
-	return nil
+	sort.Sort(dirs(df))
+
+	return df
+}
+
+func find_smallest(dirs []*dir, tresh_size uint64) dir {
+	prev := *dirs[0]
+	for _, d := range dirs {
+		if d.size < tresh_size {
+			return prev
+		}
+		prev = *d
+	}
+	return prev
 }
 
 // Main function
@@ -99,9 +123,7 @@ func main() {
 		return
 	}
 
-	//	pos := 0
-	//	nchar := 4
-	root := dir{name: "/", size: 0}
+	root := dir{name: "/", size: uint64(0)}
 
 	dirp := &root
 
@@ -111,17 +133,19 @@ func main() {
 	}
 
 	fmt.Println("*** Part", *partFlag+1, "***")
+
+	// Parse commandline commands
 	for _, line := range lines {
 		w := strings.Split(line, " ")
-		//fmt.Println(w)
 
 		switch w[0] {
 		case "$":
-			//fmt.Println("Found command: ", w[1:])
+			// A command
 			switch w[1] {
 			case "ls":
-
+				// ls, not useful for this exercise
 			case "cd":
+				// Change of directory, move current directory pointer to new directory (if found)
 				switch w[2] {
 				case "/":
 					dirp = &root
@@ -139,21 +163,46 @@ func main() {
 				}
 			}
 		case "dir":
-			//fmt.Println("Found dir: ", w[1])
+			// A listed directory
 			dirp.add_subdir(w[1])
 		}
 		if i, err := strconv.ParseUint(w[0], 10, 64); err == nil {
-			//fmt.Println("Found file: ", w)
 			dirp.add_size(i)
 		}
 	}
 
-	// Print trer from root
-	_ = root.tree("", 100000)
-	fmt.Println("* Sum of Sizes: ", total_size, " *")
+	// Print tree from root
+	if *dbgFlag {
+		root.tree("")
+	}
+
+	flatDirs := flatten(&root)
+
+	// Calculate total size of directories smaler than a certain number
+	total_size = 0
+	for _, d := range flatDirs {
+		if *dbgFlag {
+			fmt.Println(d.name, d.size)
+		}
+		if d.size <= 100000 {
+			total_size += d.size
+		}
+	}
+	fmt.Println("Sum of sizes =", total_size)
 
 	fmt.Println("*** Part 2 ***")
-	d = root.find_smallest2delete(root.size - 70000000 + 30000000)
-	fmt.Println("* Smallest directory to delete: ", d.name)
-	fmt.Println("* Size: ", d.size)
+	fmt.Println("root.size = ", root.size)
+
+	// Calulate required size to achieve
+	delta := uint64(30000000)
+	if root.size > uint64(70000000) {
+		delta += root.size - uint64(70000000)
+	} else {
+		delta -= uint64(70000000) - root.size
+	}
+
+	if *dbgFlag {
+		fmt.Println("delta =", delta)
+	}
+	fmt.Println("Smallest dir size = ", find_smallest(flatDirs, delta).size)
 }
