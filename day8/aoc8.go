@@ -227,5 +227,5 @@ func main() {
 	f2 = scenicScore(m, f2)
 
 	maxVal := findMax(f2)
-	fmt.Println("Max score =", maxVal)
+	fmt.Println("Max score", maxVal)
 }
