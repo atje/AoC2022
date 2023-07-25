@@ -66,6 +66,54 @@ func checkRows(treeMap [][]rune, visible [][]int) (res [][]int) {
 	return res
 }
 
+// For each row, calulate scenic score from left
+func scenicScore(treeMap [][]rune, scoreMap [][]int) (res [][]int) {
+
+	first := false
+	if scoreMap == nil {
+		res = make([][]int, len(treeMap))
+		first = true
+	} else {
+		res = scoreMap
+	}
+
+	for r, row := range treeMap {
+		if res[r] == nil {
+			res[r] = make([]int, len(row))
+		}
+		for i := 0; i < len(row); i++ {
+			score := 1
+			for j := i + 1; j <= len(row); j++ {
+				//				fmt.Println("i, j, score = ", i, j, score)
+				if j >= len(row) {
+					if score > 1 {
+						score--
+					}
+					//fmt.Println("j >= len(row)", j, score)
+					break
+				}
+				if row[i] <= row[j] {
+					//fmt.Println("row[i] <= row[j]", i, j, score)
+					break
+				}
+				score++
+			}
+			if first {
+				res[r][i] = score
+			} else {
+				res[r][i] *= score
+			}
+		}
+	}
+	if *dbgFlag {
+		fmt.Println(res)
+	}
+
+	return res
+
+}
+
+// Count number of ones in the provided matrix
 func countOnes(matrix [][]int) int {
 	res := 0
 
@@ -73,6 +121,21 @@ func countOnes(matrix [][]int) int {
 		for _, v := range row {
 			if v == 1 {
 				res++
+			}
+		}
+	}
+
+	return res
+}
+
+// Find max in matrix, ignore edges
+func findMax(matrix [][]int) int {
+	res := 0
+
+	for i := 1; i < len(matrix)-1; i++ {
+		for j := 1; j < len(matrix[i])-1; j++ {
+			if matrix[i][j] > res {
+				res = matrix[i][j]
 			}
 		}
 	}
@@ -126,4 +189,43 @@ func main() {
 	treeCount += countOnes(f)
 
 	fmt.Println("treeCount", treeCount)
+
+	fmt.Println("*** Part 2 ***")
+
+	if *dbgFlag {
+		fmt.Println(m)
+	}
+
+	// Check first side
+	f2 := scenicScore(m, nil)
+
+	// Check second side
+	mirror(m)
+	mirror(f2)
+	if *dbgFlag {
+		fmt.Println(m)
+		fmt.Println(f2)
+	}
+	f2 = scenicScore(m, f2)
+
+	// Check third side
+	m = transpose(m)
+	f2 = transpose(f2)
+	if *dbgFlag {
+		fmt.Println(m)
+		fmt.Println(f2)
+	}
+	f2 = scenicScore(m, f2)
+
+	// Check final side
+	mirror(m)
+	mirror(f2)
+	if *dbgFlag {
+		fmt.Println(m)
+		fmt.Println(f2)
+	}
+	f2 = scenicScore(m, f2)
+
+	maxVal := findMax(f2)
+	fmt.Println("Max score =", maxVal)
 }
