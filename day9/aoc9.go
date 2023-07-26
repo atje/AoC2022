@@ -50,11 +50,10 @@ func pointEqual(a point, b point) bool {
 
 func uniqueSlice(sl []point) []point {
 	res := make([]point, 0)
-
-	prev := point{}
-
+	prev := sl[0]
+	res = append(res, prev)
 	for _, v := range sl {
-		if (prev == point{}) || (prev != point{} && !pointEqual(prev, v)) {
+		if !pointEqual(prev, v) {
 			res = append(res, v)
 		}
 		prev = v
