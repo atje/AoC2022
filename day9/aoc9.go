@@ -128,6 +128,7 @@ func main() {
 	// Add initial position to trail
 	tail.trail = append(tail.trail, tail.position)
 
+	// Loop through head movements, adjust tail if needed
 	for _, line := range lines {
 		s := strings.Split(line, " ")
 
