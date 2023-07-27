@@ -26,7 +26,7 @@ type obj struct {
 	trail    []point // A slice of points passed by the object
 }
 
-// var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
+var partFlag = flag.Int("p", 0, "part 0 (default) or part 1")
 var dbgFlag = flag.Bool("d", false, "debug flag")
 
 func dbgP(a ...any) {
@@ -48,6 +48,7 @@ func pointEqual(a point, b point) bool {
 
 }
 
+// Return slice with unique points from sorted slice sl
 func uniqueSlice(sl []point) []point {
 	res := make([]point, 0)
 	prev := sl[0]
@@ -62,9 +63,9 @@ func uniqueSlice(sl []point) []point {
 }
 
 // Move tail so it's adjacent to the head
-func moveTail(h *obj, t *obj) {
+func moveTail(h *obj, t *obj, storeTrail bool) {
 
-	dbgP("moveTail", *h, *t)
+	//dbgP("moveTail", *h, *t)
 	dist := pointDist(h.position, t.position)
 
 	// Check tail too far from head
@@ -72,7 +73,7 @@ func moveTail(h *obj, t *obj) {
 	case ((math.Abs(float64(dist.x)) > 1) && (dist.y != 0)) ||
 		((dist.x != 0) && (math.Abs(float64(dist.y)) > 1)):
 		// Not same column or row, move diagonally
-		dbgP("Diagonal move")
+		//dbgP("Diagonal move")
 		if math.Signbit(float64(dist.x)) {
 			t.position.x--
 		} else {
@@ -85,7 +86,7 @@ func moveTail(h *obj, t *obj) {
 		}
 	case math.Abs(float64(dist.x)) > 1:
 		// Same row, move along row
-		dbgP("Row move")
+		//dbgP("Row move")
 		if math.Signbit(float64(dist.x)) {
 			t.position.x--
 		} else {
@@ -93,7 +94,7 @@ func moveTail(h *obj, t *obj) {
 		}
 	case math.Abs(float64(dist.y)) > 1:
 		// Same column, move along column
-		dbgP("Column move")
+		//dbgP("Column move")
 		if math.Signbit(float64(dist.y)) {
 			t.position.y--
 		} else {
@@ -101,11 +102,14 @@ func moveTail(h *obj, t *obj) {
 		}
 	default:
 		// No need to move tail, just return
-		dbgP("No move")
+		//dbgP("No move")
 		return
 	}
-	t.trail = append(t.trail, t.position)
-	moveTail(h, t)
+	if storeTrail {
+		t.trail = append(t.trail, t.position)
+	}
+
+	moveTail(h, t, storeTrail)
 }
 
 // Main function
@@ -120,12 +124,28 @@ func main() {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	// Initialize starting positions of head, tail
-	head := obj{name: "Head"}
-	tail := obj{name: "Tail"}
+	knotCount := 2
+	if *partFlag == 1 {
+		knotCount = 10
+	}
+
+	knots := make([]obj, knotCount)
+	tailInd := knotCount - 1
+
+	// Initialize starting positions of knots, name them for debugging
+	for n := 0; n < knotCount; n++ {
+		name := strconv.Itoa(n)
+		switch {
+		case n == 0:
+			name = "Head"
+		case n == tailInd:
+			name = "Tail"
+		}
+		knots[n].name = name
+	}
 
 	// Add initial position to trail
-	tail.trail = append(tail.trail, tail.position)
+	knots[tailInd].trail = append(knots[tailInd].trail, knots[tailInd].position)
 
 	// Loop through head movements, adjust tail if needed
 	for _, line := range lines {
@@ -134,37 +154,40 @@ func main() {
 		steps, _ := strconv.Atoi(s[1])
 		switch {
 		case s[0] == "U":
-			head.position.y += steps
-			dbgP("Up", s[1], head)
+			knots[0].position.y += steps
+			dbgP("Up", s[1], knots[0])
 		case s[0] == "D":
-			head.position.y -= steps
-			dbgP("Down", s[1], head)
+			knots[0].position.y -= steps
+			dbgP("Down", s[1], knots[0])
 		case s[0] == "L":
-			head.position.x -= steps
-			dbgP("Left", s[1], head)
+			knots[0].position.x -= steps
+			dbgP("Left", s[1], knots[0])
 		case s[0] == "R":
-			head.position.x += steps
-			dbgP("Right", s[1], head)
+			knots[0].position.x += steps
+			dbgP("Right", s[1], knots[0])
 		default:
 			fmt.Println("Unknown input: ", line)
 		}
-		moveTail(&head, &tail)
+		for i := 1; i < knotCount; i++ {
+			moveTail(&knots[i-1], &knots[i], i == tailInd)
+		}
+		//fmt.Println(knots)
 	}
-	dbgP("Final position", head)
+	dbgP("Final position", knots[0])
 
 	// Check unique positions by sorting the trail slice and remove duplicate values
-	sort.Slice(tail.trail, func(p, q int) bool {
-		if tail.trail[p].y < tail.trail[q].y {
+	sort.Slice(knots[tailInd].trail, func(p, q int) bool {
+		if knots[tailInd].trail[p].x < knots[tailInd].trail[q].x {
 			return true
 		}
-		if (tail.trail[p].y == tail.trail[q].y) && (tail.trail[p].x < tail.trail[q].x) {
+		if (knots[tailInd].trail[p].x == knots[tailInd].trail[q].x) && (knots[tailInd].trail[p].y < knots[tailInd].trail[q].y) {
 			return true
 		}
 		return false
 	})
 
-	dbgP(tail)
-	u := uniqueSlice(tail.trail)
+	dbgP(knots[tailInd])
+	u := uniqueSlice(knots[tailInd].trail)
 	dbgP(u)
 
 	fmt.Println("Unique tail positions:", len(u))
