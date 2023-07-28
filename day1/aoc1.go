@@ -38,23 +38,23 @@ func readFile(name string) []int {
 	return elfCalories
 }
 
-func part1(calories []int) int {
-	maxCalories := 0
-	for _, cals := range calories {
-		if cals > maxCalories {
-			maxCalories = cals
-		}
+// Return the sum of calories for the elfs with highest number of
+// calories.
+func sumTopElfs(calories []int, elfs int) int {
+	sort.Ints(calories)
+	sum := 0
+	for i := 1; i <= elfs; i++ {
+		sum += calories[len(calories)-i]
 	}
-	return maxCalories
+	return sum
+}
+
+func part1(calories []int) int {
+	return sumTopElfs(calories, 1)
 }
 
 func part2(calories []int) int {
-	sort.Ints(calories)
-	sumOfTop3 := 0
-	for i := 1; i <= 3; i++ {
-		sumOfTop3 += calories[len(calories)-i]
-	}
-	return sumOfTop3
+	return sumTopElfs(calories, 3)
 }
 
 func main() {
