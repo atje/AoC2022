@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+// Read input file and return a slice containing the number
+// of total calories per elf.
 func readFile(name string) []int {
 	input, err := os.Open(name)
 	if err != nil {
