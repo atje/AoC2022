@@ -190,6 +190,7 @@ func main() {
 	u := uniqueSlice(knots[tailInd].trail)
 	dbgP(u)
 
+	fmt.Println("All tail positions:", len(knots[tailInd].trail))
 	fmt.Println("Unique tail positions:", len(u))
 
 }
