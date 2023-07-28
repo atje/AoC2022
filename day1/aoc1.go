@@ -9,13 +9,6 @@ import (
 	"strconv"
 )
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func readFile(name string) []int {
 	input, err := os.Open(name)
 	if err != nil {
