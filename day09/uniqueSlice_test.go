@@ -35,7 +35,7 @@ func TestUniqueSlice(t *testing.T) {
 		output := uniqueSlice(test.arg)
 
 		if !testEq(output, test.res) {
-			t.Errorf("Output %q not equal to expected %q", output, test.res)
+			t.Errorf("Output %v not equal to expected %v", output, test.res)
 		}
 	}
 
