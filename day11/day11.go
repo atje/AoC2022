@@ -10,19 +10,53 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
 )
 
+type fnT func(int) int
+
 type monkeyT struct {
-	id        int
-	operation func(int) int
-	test      func(int) int
-	items     []int
+	id         int
+	operation  fnT
+	test       int
+	throwTrue  int
+	throwFalse int
+	inspCnt    int
+	items      []int
 }
 
 var monkeys []monkeyT
+
+func parseOperation(bytes []byte) fnT {
+
+	exprRE := regexp.MustCompile(`new = old\s+([\*\+\-])\s+(\d+|old)`)
+
+	matches := exprRE.FindAllSubmatch(bytes, -1)
+	log.Traceln(matches)
+	op, val := string(matches[0][1]), string(matches[0][2])
+	vali, old := strconv.Atoi(val)
+	log.Tracef("n = o %v %v", op, val)
+
+	switch {
+	case op == "*":
+		if old != nil {
+			return func(a int) int { log.Tracef("%d * %d / 3", a, a); return a * a / 3 }
+		}
+		return func(a int) int { log.Tracef("%d * %d / 3", a, vali); return a * vali / 3 }
+	case op == "+":
+		if old != nil {
+			return func(a int) int { log.Tracef("(%d + %d) / 3", a, a); return (a + a) / 3 }
+		}
+		return func(a int) int { log.Tracef("(%d + %d) / 3", a, vali); return (a + vali) / 3 }
+	default:
+		log.Fatalln("could not parse operator", op)
+	}
+
+	return func(a int) int { return a }
+}
 
 // Load initial monkeys
 func loadMonkeys(file string) []monkeyT {
@@ -35,9 +69,13 @@ func loadMonkeys(file string) []monkeyT {
 	}
 	defer fp.Close()
 
-	newMonkeyRE := regexp.MustCompile(`Monkey (\d):`)
+	newMonkeyRE := regexp.MustCompile(`Monkey\s+(\d):`)
 	itemsRE := regexp.MustCompile(`\s+Starting items:\s+([\s,\d]+)`)
 	itemRE := regexp.MustCompile(`(\d+)`)
+	opRE := regexp.MustCompile(`Operation:\s+(.+)`)
+	testRE := regexp.MustCompile(`Test:\s+divisible by\s+(\d+)`)
+	trueRE := regexp.MustCompile(`\s+If true: throw to monkey\s+(\d+)`)
+	falseRE := regexp.MustCompile(`\s+If false: throw to monkey\s+(\d+)`)
 
 	scanner := bufio.NewScanner(fp)
 	for scanner.Scan() {
@@ -61,16 +99,82 @@ func loadMonkeys(file string) []monkeyT {
 				item, _ := strconv.Atoi(string(itemsFound[i]))
 				m[len(m)-1].items = append(m[len(m)-1].items, item)
 			}
+		case opRE.FindSubmatch(bytes) != nil:
+			matches := opRE.FindSubmatch(bytes)
+			log.Tracef("Found operation: %v", string(matches[1]))
+
+			m[len(m)-1].operation = parseOperation(matches[1])
+
+		case testRE.FindSubmatch(bytes) != nil:
+			matches := testRE.FindSubmatch(bytes)
+			m[len(m)-1].test, _ = strconv.Atoi(string(matches[1]))
+
+		case trueRE.FindSubmatch(bytes) != nil:
+			matches := trueRE.FindSubmatch(bytes)
+			m[len(m)-1].throwTrue, _ = strconv.Atoi(string(matches[1]))
+
+		case falseRE.FindSubmatch(bytes) != nil:
+			matches := falseRE.FindSubmatch(bytes)
+			m[len(m)-1].throwFalse, _ = strconv.Atoi(string(matches[1]))
 		}
 	}
 	log.Tracef("Monkeys:\n%v", m)
 	return m
 }
 
+// Play one round
+func playRound() {
+	for i, m := range monkeys {
+		for _, item := range m.items {
+			worryLvl := m.operation(item)
+			throwMonkey := m.throwFalse
+			if worryLvl%m.test == 0 {
+				log.Traceln("True", worryLvl)
+				throwMonkey = m.throwTrue
+			}
+			log.Tracef("Throwing %d to monkey %d\n", worryLvl, throwMonkey)
+			monkeys[throwMonkey].items = append(monkeys[throwMonkey].items, worryLvl)
+			monkeys[i].inspCnt++
+		}
+		monkeys[i].items = []int{}
+	}
+}
+
+// Dump monkeys to stdout
+func dumpMonkeys() {
+	for _, n := range monkeys {
+		log.Debugf("Monkey %d: ", n.id)
+		log.Debugf("%v\t%d\n", n.items, n.inspCnt)
+	}
+}
+
+// Multiply the two most active monkey inspection count
+func calcMonkeyBusiness() int {
+	res := -1
+	activecnt := make([]int, 0)
+
+	for _, m := range monkeys {
+		activecnt = append(activecnt, m.inspCnt)
+	}
+
+	sort.Slice(activecnt, func(i, j int) bool {
+		return activecnt[i] > activecnt[j]
+	})
+
+	res = activecnt[0] * activecnt[1]
+	return res
+}
+
 func solveDay11Part1(file string, rounds int) int {
 	monkeys = loadMonkeys(file)
 
-	return -1
+	for i := 0; i < rounds; i++ {
+		log.Debugln("Round", i)
+		playRound()
+		dumpMonkeys()
+	}
+
+	return calcMonkeyBusiness()
 }
 
 func init() {
@@ -82,7 +186,7 @@ func init() {
 	log.SetOutput(os.Stdout)
 
 	// Only log the warning severity or above.
-	log.SetLevel(log.TraceLevel)
+	log.SetLevel(log.WarnLevel)
 }
 
 func main() {
