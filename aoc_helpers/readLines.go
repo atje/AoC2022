@@ -20,5 +20,3 @@ func ReadLines(path string) ([]string, error) {
 	}
 	return lines, scanner.Err()
 }
-
-func main() {}
