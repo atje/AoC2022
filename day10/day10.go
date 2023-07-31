@@ -31,6 +31,8 @@ type cpuT struct {
 	opcnt int // Cycle count remaining for current operation
 }
 
+const CRTLEN int = 40
+
 func (c *cpuT) tick() {
 	log.Tracef("tick() called, starting cycle %d, opcnt %d", c.cycle, c.opcnt)
 
@@ -49,6 +51,39 @@ func (c *cpuT) tick() {
 		log.Tracef("tick() executing operation %s", c.op.o)
 	}
 	c.cycle++
+}
+
+func spriteInPixel(pixel int, x int) bool {
+	if pixel >= x-1 && pixel <= x+1 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (c *cpuT) tick2() string {
+	log.Tracef("tick2() called, starting cycle %d, opcnt %d", c.cycle, c.opcnt)
+
+	res := "."
+	if spriteInPixel((c.cycle-1)%CRTLEN, c.x) {
+		res = "#"
+	}
+
+	if c.opcnt > 0 {
+		c.opcnt--
+	}
+
+	if c.opcnt == 0 {
+		c.x = c.op.f(c.x, c.arg)
+		log.Tracef("tick() executing operation %s", c.op.o)
+	}
+	c.cycle++
+
+	if (c.cycle-1)%CRTLEN == 0 {
+		res += "\n"
+	}
+
+	return res
 }
 
 var cpu cpuT
@@ -91,16 +126,46 @@ func solveDay10Part1(lines []string) int {
 	return signalStrength
 }
 
+func solveDay10Part2(lines []string) string {
+
+	CRTrender := ""
+
+	// initialize cpu
+	cpu.x = 1
+	cpu.cycle = 1
+
+	for _, line := range lines {
+		s := strings.Split(line, " ")
+
+		op := ops[s[0]]
+		arg := 0
+
+		if len(s) > 1 {
+			arg, _ = strconv.Atoi(s[1])
+		}
+
+		log.Tracef("op %s, arg %d", op.o, arg)
+		cpu.op, cpu.arg, cpu.opcnt = op, arg, op.c
+
+		log.Tracef("CPU %v", cpu)
+		for cpu.opcnt > 0 {
+			CRTrender += cpu.tick2()
+		}
+	}
+
+	return CRTrender
+}
+
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&log.JSONFormatter{})
+	//log.SetFormatter(&log.JSONFormatter{})
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
 
 	// Only log the warning severity or above.
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.WarnLevel)
 }
 
 func main() {
@@ -118,4 +183,8 @@ func main() {
 	}
 
 	fmt.Println("Day 10, part 1 answer:", solveDay10Part1(lines))
+
+	rows := solveDay10Part2(lines)
+	fmt.Println("Day 10, part 2 render:")
+	fmt.Println(rows)
 }
