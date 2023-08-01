@@ -1,29 +1,13 @@
 package main
 
 import (
-	"bufio"
+	"AoC2022/aoc_helpers"
 	"fmt"
 	"log"
 	"os"
 	"sort"
 	"strconv"
 )
-
-// Read all lines from a file
-func readLines(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
-}
 
 // Return list of hashmap keys sorted by value in descending order
 func sortByCalories(hm map[int]int) []int {
@@ -58,7 +42,7 @@ func main() {
 		return
 	}
 
-	lines, err := readLines(os.Args[1])
+	lines, err := aoc_helpers.ReadLines(os.Args[1])
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
