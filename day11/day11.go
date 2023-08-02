@@ -24,33 +24,36 @@ type monkeyT struct {
 	test       int
 	throwTrue  int
 	throwFalse int
-	inspCnt    int
+	finspCnt   int
+	tinspCnt   int
 	items      []int
 }
 
 var monkeys []monkeyT
+var dbgFlag = flag.Bool("d", false, "debug flag")
 
-func parseOperation(bytes []byte) fnT {
+func parseOperation(bytes []byte, div int) fnT {
 
 	exprRE := regexp.MustCompile(`new = old\s+([\*\+\-])\s+(\d+|old)`)
 
 	matches := exprRE.FindAllSubmatch(bytes, -1)
 	log.Traceln(matches)
 	op, val := string(matches[0][1]), string(matches[0][2])
-	vali, old := strconv.Atoi(val)
+	v, old := strconv.Atoi(val)
+	vali := int(v)
 	log.Tracef("n = o %v %v", op, val)
 
 	switch {
 	case op == "*":
 		if old != nil {
-			return func(a int) int { log.Tracef("%d * %d / 3", a, a); return a * a / 3 }
+			return func(a int) int { log.Tracef("%d * %d / %d", a, a, div); return a * a / div }
 		}
-		return func(a int) int { log.Tracef("%d * %d / 3", a, vali); return a * vali / 3 }
+		return func(a int) int { log.Tracef("%d * %d / %d", a, vali, div); return a * vali / div }
 	case op == "+":
 		if old != nil {
-			return func(a int) int { log.Tracef("(%d + %d) / 3", a, a); return (a + a) / 3 }
+			return func(a int) int { log.Tracef("(%d + %d) / %d", a, a, div); return (a + a) / div }
 		}
-		return func(a int) int { log.Tracef("(%d + %d) / 3", a, vali); return (a + vali) / 3 }
+		return func(a int) int { log.Tracef("(%d + %d) / %d", a, vali, div); return (a + vali) / div }
 	default:
 		log.Fatalln("could not parse operator", op)
 	}
@@ -59,7 +62,7 @@ func parseOperation(bytes []byte) fnT {
 }
 
 // Load initial monkeys
-func loadMonkeys(file string) []monkeyT {
+func loadMonkeys(file string, div int) []monkeyT {
 
 	m := make([]monkeyT, 0)
 
@@ -97,17 +100,18 @@ func loadMonkeys(file string) []monkeyT {
 			m[len(m)-1].items = make([]int, 0)
 			for i := 0; i < len(itemsFound); i++ {
 				item, _ := strconv.Atoi(string(itemsFound[i]))
-				m[len(m)-1].items = append(m[len(m)-1].items, item)
+				m[len(m)-1].items = append(m[len(m)-1].items, int(item))
 			}
 		case opRE.FindSubmatch(bytes) != nil:
 			matches := opRE.FindSubmatch(bytes)
 			log.Tracef("Found operation: %v", string(matches[1]))
 
-			m[len(m)-1].operation = parseOperation(matches[1])
+			m[len(m)-1].operation = parseOperation(matches[1], div)
 
 		case testRE.FindSubmatch(bytes) != nil:
 			matches := testRE.FindSubmatch(bytes)
-			m[len(m)-1].test, _ = strconv.Atoi(string(matches[1]))
+			val, _ := strconv.Atoi(string(matches[1]))
+			m[len(m)-1].test = int(val)
 
 		case trueRE.FindSubmatch(bytes) != nil:
 			matches := trueRE.FindSubmatch(bytes)
@@ -122,19 +126,48 @@ func loadMonkeys(file string) []monkeyT {
 	return m
 }
 
+func calcLCD() int {
+	denoms := make(map[int]int)
+
+	for _, m := range monkeys {
+		denoms[m.test] = m.test
+	}
+
+	for {
+		all_equal := true
+		least_ind := -1
+		for k, v := range denoms {
+			if (least_ind != -1) && (denoms[least_ind] != v) {
+				all_equal = false
+			}
+			if least_ind == -1 {
+				least_ind = k
+			} else if v < denoms[least_ind] {
+				least_ind = k
+			}
+		}
+		if all_equal {
+			return denoms[least_ind]
+		}
+		denoms[least_ind] += least_ind
+	}
+}
+
 // Play one round
-func playRound() {
+func playRound(lcd int) {
 	for i, m := range monkeys {
 		for _, item := range m.items {
 			worryLvl := m.operation(item)
 			throwMonkey := m.throwFalse
-			if worryLvl%m.test == 0 {
+			if worryLvl%m.test == int(0) {
 				log.Traceln("True", worryLvl)
 				throwMonkey = m.throwTrue
+				monkeys[i].tinspCnt++
+			} else {
+				monkeys[i].finspCnt++
 			}
 			log.Tracef("Throwing %d to monkey %d\n", worryLvl, throwMonkey)
-			monkeys[throwMonkey].items = append(monkeys[throwMonkey].items, worryLvl)
-			monkeys[i].inspCnt++
+			monkeys[throwMonkey].items = append(monkeys[throwMonkey].items, worryLvl%lcd)
 		}
 		monkeys[i].items = []int{}
 	}
@@ -144,7 +177,7 @@ func playRound() {
 func dumpMonkeys() {
 	for _, n := range monkeys {
 		log.Debugf("Monkey %d: ", n.id)
-		log.Debugf("%v\t%d\n", n.items, n.inspCnt)
+		log.Debugf("truecnt(%d), falsecnt(%d) %v", n.tinspCnt, n.finspCnt, n.items)
 	}
 }
 
@@ -154,7 +187,7 @@ func calcMonkeyBusiness() int {
 	activecnt := make([]int, 0)
 
 	for _, m := range monkeys {
-		activecnt = append(activecnt, m.inspCnt)
+		activecnt = append(activecnt, m.finspCnt+m.tinspCnt)
 	}
 
 	sort.Slice(activecnt, func(i, j int) bool {
@@ -166,11 +199,25 @@ func calcMonkeyBusiness() int {
 }
 
 func solveDay11Part1(file string, rounds int) int {
-	monkeys = loadMonkeys(file)
+	monkeys = loadMonkeys(file, 3)
 
+	lcd := calcLCD()
 	for i := 0; i < rounds; i++ {
 		log.Debugln("Round", i)
-		playRound()
+		playRound(lcd)
+		dumpMonkeys()
+	}
+
+	return calcMonkeyBusiness()
+}
+
+func solveDay11Part2(file string, rounds int) int {
+	monkeys = loadMonkeys(file, 1)
+
+	lcd := calcLCD()
+	for i := 0; i < rounds; i++ {
+		log.Debugln("Round", i)
+		playRound(lcd)
 		dumpMonkeys()
 	}
 
@@ -194,9 +241,14 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
+	if *dbgFlag {
+		log.SetLevel(log.DebugLevel)
+	}
+
 	if len(args) == 0 {
 		log.Fatalln("Please provide input file!")
 	}
 
 	fmt.Println("Day 11, part 1 answer:", solveDay11Part1(args[0], 20))
+	fmt.Println("Day 11, part 2 answer:", solveDay11Part2(args[0], 10000))
 }
