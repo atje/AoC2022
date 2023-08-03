@@ -20,7 +20,7 @@ var inputs1 = []Day11inputT{
 	{"input.txt", 20, 55944},
 }
 
-func TestSolveDay10Part1(t *testing.T) {
+func TestSolveDay11Part1(t *testing.T) {
 
 	for i, test := range inputs1 {
 		output := solveDay11Part1(test.filename, test.rounds)
@@ -40,7 +40,7 @@ var inputs2 = []Day11inputT{
 	{"example.txt", 10000, 52166 * 52013},
 }
 
-func TestSolveDay10Part2(t *testing.T) {
+func TestSolveDay11Part2(t *testing.T) {
 
 	for i, test := range inputs2 {
 		output := solveDay11Part2(test.filename, test.rounds)
