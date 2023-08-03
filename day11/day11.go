@@ -126,11 +126,22 @@ func loadMonkeys(file string, div int) []monkeyT {
 	return m
 }
 
-func calcLCD() int {
+// Returns all monkeys' tests in a slice of ints
+func getTests() []int {
+	res := make([]int, 0)
+	for _, m := range monkeys {
+		res = append(res, m.test)
+	}
+	return res
+}
+
+// Calculate Least Common Denominator for a slice of ints
+// THIS COULD BE OPTIMIZED A LOT
+func calcLCD(intSlice []int) int {
 	denoms := make(map[int]int)
 
-	for _, m := range monkeys {
-		denoms[m.test] = m.test
+	for _, v := range intSlice {
+		denoms[v] = v
 	}
 
 	for {
@@ -198,23 +209,25 @@ func calcMonkeyBusiness() int {
 	return res
 }
 
+// Day 11, part 1 solution
 func solveDay11Part1(file string, rounds int) int {
 	monkeys = loadMonkeys(file, 3)
 
-	lcd := calcLCD()
 	for i := 0; i < rounds; i++ {
 		log.Debugln("Round", i)
-		playRound(lcd)
+		playRound(1 << 62)
 		dumpMonkeys()
 	}
 
 	return calcMonkeyBusiness()
 }
 
+// Day 12, part 2 solution
 func solveDay11Part2(file string, rounds int) int {
 	monkeys = loadMonkeys(file, 1)
 
-	lcd := calcLCD()
+	lcd := calcLCD(getTests())
+
 	for i := 0; i < rounds; i++ {
 		log.Debugln("Round", i)
 		playRound(lcd)
