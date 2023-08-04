@@ -81,7 +81,7 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 		for y := 0; y < len(grid[x]); y++ {
 			vertexID := generateID(x, len(grid[x]), y)
 			g.AddVertex(vertexID) //
-			log.Tracef("Adding vertex x%d y%d with ID %d", x, y, vertexID)
+			log.Debugf("Adding vertex x%d y%d with ID %d", x, y, vertexID)
 		}
 	}
 
@@ -97,7 +97,7 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 				if grid[x+1][y] <= grid[x][y]+1 {
 					// Down move possible, add path
 					destID := generateID(x+1, len(grid[x]), y)
-					log.Tracef("Adding arc (ID %d) x%d y%d --> x%d y%d (ID %d)", vertexID, x, y, x+1, y, destID)
+					log.Debugf("Adding arc (ID %d) x%d y%d --> x%d y%d (ID %d)", vertexID, x, y, x+1, y, destID)
 					g.AddArc(vertexID, destID, 1)
 				}
 			}
@@ -105,7 +105,7 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 			if x > 0 {
 				if grid[x-1][y] <= grid[x][y]+1 {
 					// Up move possible, add path
-					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x-1, y)
+					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x-1, y)
 					g.AddArc(vertexID, generateID(x-1, len(grid[x]), y), 1)
 				}
 			}
@@ -113,7 +113,7 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 			if y > 0 {
 				if grid[x][y-1] <= grid[x][y]+1 {
 					// Left move possible, add path
-					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y-1)
+					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y-1)
 					g.AddArc(vertexID, generateID(x, len(grid[x]), y-1), 1)
 				}
 			}
@@ -122,7 +122,7 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 			if y < (len(grid[x]) - 1) {
 				if grid[x][y+1] <= grid[x][y]+1 {
 					// Right move possible, add path
-					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y+1)
+					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y+1)
 					g.AddArc(vertexID, generateID(x, len(grid[x]), y+1), 1)
 				}
 			}
@@ -131,6 +131,23 @@ func genGraph(grid [][]int) *dijkstra.Graph {
 	log.Tracef("graph: %+v", g)
 
 	return g
+}
+
+func findAll(grid [][]int, i int) []int {
+	res := make([]int, 0)
+
+	for x := 0; x < len(grid); x++ {
+		for y := 0; y < len(grid[x]); y++ {
+			log.Debugf("findAll: grid[%d][%d] = %d", x, y, grid[x][y])
+			if grid[x][y] == i {
+				vertexID := generateID(x, len(grid[x]), y)
+				log.Debugf("findAll: Appending %d", vertexID)
+				res = append(res, vertexID)
+			}
+		}
+	}
+
+	return res
 }
 
 func solveDay12Part1(file string) int {
@@ -151,8 +168,29 @@ func solveDay12Part1(file string) int {
 }
 
 func solveDay12Part2(file string) int {
+	// Generate heatmap as a grid
+	heightGrid, _, endPos := genHeightgrid(file)
 
-	return -1
+	// Create Graph
+	g := genGraph(heightGrid)
+
+	// Find all points with height 'a', which is 0 in the heightmap
+	startPositions := findAll(heightGrid, 0)
+
+	// Calculate distance from all starting positions
+	dist := int64(1 << 62)
+	for _, startPos := range startPositions {
+		path, err := g.Shortest(startPos, endPos)
+
+		if err == nil && path.Distance < dist {
+			log.Debugf("New distance %d is smaller than old %d, startPos %d", path.Distance, dist, startPos)
+			dist = path.Distance
+		} else {
+			log.Debugf("No path found from %d to %d, err = %v, dist %d", startPos, endPos, err, dist)
+		}
+	}
+	// Find & return minimum distance
+	return int(dist)
 }
 
 func init() {
@@ -170,7 +208,7 @@ func main() {
 	args := flag.Args()
 
 	if *dbgFlag {
-		log.SetLevel(log.TraceLevel)
+		log.SetLevel(log.DebugLevel)
 	}
 
 	if len(args) == 0 {
