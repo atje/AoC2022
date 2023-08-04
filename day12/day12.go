@@ -1,0 +1,166 @@
+/*
+--- Day 12: Hill Climbing Algorithm ---
+
+Some definitions from the text:
+elevation: a-z (z highest)
+S: current position, height a
+E: wanted position, height z
+
+Objective: Reach E from S, with least amount of steps
+
+Rules:
+- one move U|D|L|R per step
+- Max one higher than current square in one step
+
+Approach:
+- Read input into [][] heightgrid
+- For each point, add neighbouring points and calculate cost to reach them
+- Use Dijkstra package to calculate shortest path, using defined points and costs
+
+*/
+
+package main
+
+import (
+	"AoC2022/aoc_helpers"
+	"flag"
+	"fmt"
+	"os"
+
+	"github.com/RyanCarrier/dijkstra"
+	log "github.com/sirupsen/logrus"
+)
+
+var dbgFlag = flag.Bool("d", false, "debug flag")
+
+// Generate a unique node ID, based on x/y coordinates
+func generateID(x, mult, y int) int {
+	return x*mult + y
+}
+
+func solveDay12Part1(file string) int {
+
+	heightGrid := make([][]int, 0)
+	endPos := -1
+	startPos := -1
+
+	// Read file into [][]grid
+	lines, err := aoc_helpers.ReadLines(file)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
+
+	for x, line := range lines {
+		heightGrid = append(heightGrid, make([]int, 0))
+		for y, height := range line {
+			name := x*len(line) + y
+			if height == 'E' {
+				endPos = name
+				height = 'z'
+			}
+			if height == 'S' {
+				startPos = name
+				height = 'a'
+			}
+			heightGrid[x] = append(heightGrid[x], int(height-rune('a')))
+		}
+	}
+
+	log.Debugf("S at %d, E at %d", startPos, endPos)
+	log.Debugf("Grid: %v", heightGrid)
+
+	// Create Graph
+	g := dijkstra.NewGraph()
+
+	// Add vertices
+	for x := 0; x < len(heightGrid); x++ {
+		for y := 0; y < len(heightGrid[x]); y++ {
+			vertexID := generateID(x, len(heightGrid[x]), y)
+			g.AddVertex(vertexID) //
+			log.Tracef("Adding vertex x%d y%d with ID %d", x, y, vertexID)
+		}
+	}
+
+	// Add arcs
+	for x := 0; x < len(heightGrid); x++ {
+		for y := 0; y < len(heightGrid[x]); y++ {
+			vertexID := generateID(x, len(heightGrid[x]), y)
+
+			// Check neighbouring squares for possible paths //
+
+			// Down
+			if x < (len(heightGrid) - 1) {
+				if heightGrid[x+1][y] <= heightGrid[x][y]+1 {
+					// Down move possible, add path
+					destID := generateID(x+1, len(heightGrid[x]), y)
+					log.Tracef("Adding arc (ID %d) x%d y%d --> x%d y%d (ID %d)", vertexID, x, y, x+1, y, destID)
+					g.AddArc(vertexID, destID, 1)
+				}
+			}
+			// Up
+			if x > 0 {
+				if heightGrid[x-1][y] <= heightGrid[x][y]+1 {
+					// Up move possible, add path
+					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x-1, y)
+					g.AddArc(vertexID, generateID(x-1, len(heightGrid[x]), y), 1)
+				}
+			}
+			// Left
+			if y > 0 {
+				if heightGrid[x][y-1] <= heightGrid[x][y]+1 {
+					// Left move possible, add path
+					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y-1)
+					g.AddArc(vertexID, generateID(x, len(heightGrid[x]), y-1), 1)
+				}
+			}
+
+			// Right
+			if y < (len(heightGrid[x]) - 1) {
+				if heightGrid[x][y+1] <= heightGrid[x][y]+1 {
+					// Right move possible, add path
+					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y+1)
+					g.AddArc(vertexID, generateID(x, len(heightGrid[x]), y+1), 1)
+				}
+			}
+		}
+	}
+	log.Tracef("graph: %+v", g)
+
+	path, err := g.Shortest(startPos, endPos)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Tracef("Shortest path from node %d to %d = %v", startPos, endPos, path)
+	return int(path.Distance)
+}
+
+func solveDay12Part2(file string) int {
+
+	return -1
+}
+
+func init() {
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.WarnLevel)
+}
+
+func main() {
+
+	flag.Parse()
+	args := flag.Args()
+
+	if *dbgFlag {
+		log.SetLevel(log.TraceLevel)
+	}
+
+	if len(args) == 0 {
+		log.Fatalln("Please provide input file!")
+	}
+
+	fmt.Println("Day 12, part 1:", solveDay12Part1(args[0]))
+	fmt.Println("Day 12, part 2:", solveDay12Part2(args[0]))
+}
