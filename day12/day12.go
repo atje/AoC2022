@@ -38,11 +38,10 @@ func generateID(x, mult, y int) int {
 	return x*mult + y
 }
 
-func solveDay12Part1(file string) int {
-
-	heightGrid := make([][]int, 0)
-	endPos := -1
-	startPos := -1
+func genHeightgrid(file string) (grid [][]int, startPos int, endPos int) {
+	grid = make([][]int, 0)
+	endPos = -1
+	startPos = -1
 
 	// Read file into [][]grid
 	lines, err := aoc_helpers.ReadLines(file)
@@ -51,7 +50,7 @@ func solveDay12Part1(file string) int {
 	}
 
 	for x, line := range lines {
-		heightGrid = append(heightGrid, make([]int, 0))
+		grid = append(grid, make([]int, 0))
 		for y, height := range line {
 			name := x*len(line) + y
 			if height == 'E' {
@@ -62,75 +61,92 @@ func solveDay12Part1(file string) int {
 				startPos = name
 				height = 'a'
 			}
-			heightGrid[x] = append(heightGrid[x], int(height-rune('a')))
+			grid[x] = append(grid[x], int(height-rune('a')))
 		}
 	}
 
 	log.Debugf("S at %d, E at %d", startPos, endPos)
-	log.Debugf("Grid: %v", heightGrid)
+	log.Debugf("Grid: %v", grid)
 
+	return grid, startPos, endPos
+
+}
+
+func genGraph(grid [][]int) *dijkstra.Graph {
 	// Create Graph
 	g := dijkstra.NewGraph()
 
 	// Add vertices
-	for x := 0; x < len(heightGrid); x++ {
-		for y := 0; y < len(heightGrid[x]); y++ {
-			vertexID := generateID(x, len(heightGrid[x]), y)
+	for x := 0; x < len(grid); x++ {
+		for y := 0; y < len(grid[x]); y++ {
+			vertexID := generateID(x, len(grid[x]), y)
 			g.AddVertex(vertexID) //
 			log.Tracef("Adding vertex x%d y%d with ID %d", x, y, vertexID)
 		}
 	}
 
 	// Add arcs
-	for x := 0; x < len(heightGrid); x++ {
-		for y := 0; y < len(heightGrid[x]); y++ {
-			vertexID := generateID(x, len(heightGrid[x]), y)
+	for x := 0; x < len(grid); x++ {
+		for y := 0; y < len(grid[x]); y++ {
+			vertexID := generateID(x, len(grid[x]), y)
 
 			// Check neighbouring squares for possible paths //
 
 			// Down
-			if x < (len(heightGrid) - 1) {
-				if heightGrid[x+1][y] <= heightGrid[x][y]+1 {
+			if x < (len(grid) - 1) {
+				if grid[x+1][y] <= grid[x][y]+1 {
 					// Down move possible, add path
-					destID := generateID(x+1, len(heightGrid[x]), y)
+					destID := generateID(x+1, len(grid[x]), y)
 					log.Tracef("Adding arc (ID %d) x%d y%d --> x%d y%d (ID %d)", vertexID, x, y, x+1, y, destID)
 					g.AddArc(vertexID, destID, 1)
 				}
 			}
 			// Up
 			if x > 0 {
-				if heightGrid[x-1][y] <= heightGrid[x][y]+1 {
+				if grid[x-1][y] <= grid[x][y]+1 {
 					// Up move possible, add path
 					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x-1, y)
-					g.AddArc(vertexID, generateID(x-1, len(heightGrid[x]), y), 1)
+					g.AddArc(vertexID, generateID(x-1, len(grid[x]), y), 1)
 				}
 			}
 			// Left
 			if y > 0 {
-				if heightGrid[x][y-1] <= heightGrid[x][y]+1 {
+				if grid[x][y-1] <= grid[x][y]+1 {
 					// Left move possible, add path
 					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y-1)
-					g.AddArc(vertexID, generateID(x, len(heightGrid[x]), y-1), 1)
+					g.AddArc(vertexID, generateID(x, len(grid[x]), y-1), 1)
 				}
 			}
 
 			// Right
-			if y < (len(heightGrid[x]) - 1) {
-				if heightGrid[x][y+1] <= heightGrid[x][y]+1 {
+			if y < (len(grid[x]) - 1) {
+				if grid[x][y+1] <= grid[x][y]+1 {
 					// Right move possible, add path
 					log.Tracef("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y+1)
-					g.AddArc(vertexID, generateID(x, len(heightGrid[x]), y+1), 1)
+					g.AddArc(vertexID, generateID(x, len(grid[x]), y+1), 1)
 				}
 			}
 		}
 	}
 	log.Tracef("graph: %+v", g)
 
+	return g
+}
+
+func solveDay12Part1(file string) int {
+
+	// Generate heatmap as a grid
+	heightGrid, startPos, endPos := genHeightgrid(file)
+
+	// Create Graph
+	g := genGraph(heightGrid)
+
+	// Find shortest path from S to E
 	path, err := g.Shortest(startPos, endPos)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Tracef("Shortest path from node %d to %d = %v", startPos, endPos, path)
+
 	return int(path.Distance)
 }
 
