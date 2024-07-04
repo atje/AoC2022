@@ -32,6 +32,21 @@ Approach:
 - Read input lines
 - for each pair, run comparison adding output
 
+
+-- Part two --
+Using the same rules as before, organize all packets - the ones in your list of received packets as well
+as the two divider packets - into the correct order.
+
+Afterward, locate the divider packets. To find the decoder key for this distress signal, you need to determine
+the indices of the two divider packets and multiply them together.
+
+Approach:
+- Add divider packets to the input
+- Sort packets according to rules in part 1
+- find index of first divider packet
+- find index of second divider packet
+- multiply indices
+
 */
 
 package main
@@ -227,6 +242,79 @@ func solvePart1(file string) int {
 	return result
 }
 
+func merge(left, right []string) []string {
+	merged := make([]string, 0, len(left)+len(right))
+	i, j := 0, 0
+
+	for i < len(left) && j < len(right) {
+		if isOrderedPair(left[i], right[j], "") == 1 {
+			merged = append(merged, left[i])
+			i++
+		} else {
+			merged = append(merged, right[j])
+			j++
+		}
+	}
+
+	merged = append(merged, left[i:]...)
+	merged = append(merged, right[j:]...)
+
+	return merged
+}
+
+// Use merge sort to sort the packets
+func mergeSort(packets []string) []string {
+
+	length := len(packets)
+	if length <= 1 {
+		return packets
+	}
+
+	mid := length / 2
+	left := mergeSort(packets[:mid])
+	right := mergeSort(packets[mid:])
+
+	return merge(left, right)
+
+}
+
+func solvePart2(file string) int {
+	var result int = 0
+	var packets []string
+
+	// Read file
+	lines, err := aoc_helpers.ReadLines(file)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
+
+	// Go through all lines, add packets t oa new slice
+	for _, line := range lines {
+		// Skip empty lines
+		if line != "" {
+			packets = append(packets, line)
+		}
+	}
+	// Add the divider packets
+	packets = append(packets, "[[2]]")
+	packets = append(packets, "[[6]]")
+
+	// Sort packets using merge sort
+	sortedPackets := mergeSort(packets)
+
+	// Find index of divider packets & multiply them
+	for i, p := range sortedPackets {
+		if p == "[[2]]" {
+			result = i + 1
+		} else if p == "[[6]]" {
+			result = result * (i + 1)
+			break
+		}
+	}
+
+	return result
+}
+
 func init() {
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
@@ -250,4 +338,5 @@ func main() {
 	}
 
 	fmt.Println("part 1:", solvePart1(args[0]))
+	fmt.Println("part 2:", solvePart2(args[0]))
 }
