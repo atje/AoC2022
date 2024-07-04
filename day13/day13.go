@@ -29,7 +29,8 @@ Rules:
 
 
 Approach:
--
+- Read input lines
+- for each pair, run comparison adding output
 
 */
 
@@ -40,171 +41,190 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
-	"github.com/RyanCarrier/dijkstra"
 	log "github.com/sirupsen/logrus"
 )
 
 var dbgFlag = flag.Bool("d", false, "debug flag")
 
-// Generate a unique node ID, based on x/y coordinates
-func generateID(x, mult, y int) int {
-	return x*mult + y
+// Parse the packet into a list of packet data which consists of lists and ints
+func parsePacket(p string) []string {
+	l := 0
+
+	var res []string
+
+	// Check for empty packet
+	if len(p) == 0 {
+		log.Debugln("Return nil")
+		return nil
+	}
+
+	// Check for int
+	_, perr := strconv.Atoi(p)
+	if perr == nil {
+		res = append(res, p)
+		return res
+	}
+
+	// Check for list
+	for l < len(p) {
+		ptr := l
+
+		if p[l] == '[' {
+			cnt := 1
+			// find matching closing bracket
+			for {
+				ptr++
+				if ptr > len(p) {
+					log.Fatalln("incorrect packet format, could not find list closing")
+				} else if p[ptr] == '[' {
+					cnt++
+				} else if p[ptr] == ']' {
+					cnt--
+					if cnt == 0 {
+						break
+					}
+				}
+			}
+			res = append(res, p[l:ptr+1])
+			l = ptr
+		} else if p[l] >= 48 && p[l] <= 57 {
+			// Found a number
+			for {
+				ptr++
+				if ptr >= len(p) {
+					res = append(res, p[l:ptr])
+					l = ptr
+					break
+				}
+
+				if p[ptr] == ',' {
+					res = append(res, p[l:ptr])
+					l = ptr
+					break
+				}
+			}
+
+		}
+		l++
+	}
+	return res
 }
 
-func genHeightgrid(file string) (grid [][]int, startPos int, endPos int) {
-	grid = make([][]int, 0)
-	endPos = -1
-	startPos = -1
+// Returns 0 for wrong order, 1 right order, 2 for equal/undecisive
+func isOrderedPair(left string, right string, prefixStr string) int {
+	var res int = 2
 
-	// Read file into [][]grid
-	lines, err := aoc_helpers.ReadLines(file)
-	if err != nil {
-		log.Fatalf("readLines: %s", err)
+	log.Debugf("%sCompare %s vs %s", prefixStr, left, right)
+
+	prefixStr = "  " + prefixStr
+	// check if both are empty
+	if left == "" && right == "" {
+		log.Debugf("%sBoth are empty", prefixStr)
+		return 2
 	}
 
-	for x, line := range lines {
-		grid = append(grid, make([]int, 0))
-		for y, height := range line {
-			name := x*len(line) + y
-			if height == 'E' {
-				endPos = name
-				height = 'z'
-			}
-			if height == 'S' {
-				startPos = name
-				height = 'a'
-			}
-			grid[x] = append(grid[x], int(height-rune('a')))
+	// check if left is empty while right is not
+	if left == "" && right != "" {
+		log.Debugf("%sLeft side ran out of items, so input is in the right order", prefixStr)
+		return 1
+	}
+
+	// check if both are empty lists
+	if left == "[]" && right == "[]" {
+		log.Debugf("%sBoth are empty lists", prefixStr)
+		return 2
+	}
+
+	// Try to convert to int
+	lint, lerr := strconv.Atoi(left)
+	rint, rerr := strconv.Atoi(right)
+
+	// check if both are ints
+	if lerr == nil && rerr == nil {
+		v := lint - rint
+		if v < 0 {
+			log.Debugf("%sLeft side is smaller, so input is in the right order", prefixStr)
+			return 1
+		} else if v == 0 {
+			return 2
+		}
+		log.Debugf("%sRight side is smaller, so input is NOT in the right order", prefixStr)
+		return 0
+	}
+
+	// Check if one is int & the other is a list, convert to list and re-run check
+	if lerr == nil && right[0] == '[' {
+		left = "[" + left + "]"
+	}
+	if rerr == nil && left[0] == '[' {
+		right = "[" + right + "]"
+	}
+
+	// Parse packets
+	leftVals := parsePacket(left[1 : len(left)-1])
+	rightVals := parsePacket(right[1 : len(right)-1])
+
+	for n := 0; n < len(leftVals); n++ {
+		// If the right list runs out of items first, the inputs are not in the right order
+		if n >= len(rightVals) {
+			log.Debugf("%sRight side ran out of items, so input is NOT in the right order", prefixStr)
+			res = 0
+			break
+		}
+
+		// Check the pair, exit loop if answer found
+		res = isOrderedPair(leftVals[n], rightVals[n], prefixStr)
+		if res != 2 {
+			break
 		}
 	}
 
-	log.Debugf("S at %d, E at %d", startPos, endPos)
-	log.Debugf("Grid: %v", grid)
-
-	return grid, startPos, endPos
-
-}
-
-func genGraph(grid [][]int) *dijkstra.Graph {
-	// Create Graph
-	g := dijkstra.NewGraph()
-
-	// Add vertices
-	for x := 0; x < len(grid); x++ {
-		for y := 0; y < len(grid[x]); y++ {
-			vertexID := generateID(x, len(grid[x]), y)
-			g.AddVertex(vertexID) //
-			log.Debugf("Adding vertex x%d y%d with ID %d", x, y, vertexID)
-		}
-	}
-
-	// Add arcs
-	for x := 0; x < len(grid); x++ {
-		for y := 0; y < len(grid[x]); y++ {
-			vertexID := generateID(x, len(grid[x]), y)
-
-			// Check neighbouring squares for possible paths //
-
-			// Down
-			if x < (len(grid) - 1) {
-				if grid[x+1][y] <= grid[x][y]+1 {
-					// Down move possible, add path
-					destID := generateID(x+1, len(grid[x]), y)
-					log.Debugf("Adding arc (ID %d) x%d y%d --> x%d y%d (ID %d)", vertexID, x, y, x+1, y, destID)
-					g.AddArc(vertexID, destID, 1)
-				}
-			}
-			// Up
-			if x > 0 {
-				if grid[x-1][y] <= grid[x][y]+1 {
-					// Up move possible, add path
-					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x-1, y)
-					g.AddArc(vertexID, generateID(x-1, len(grid[x]), y), 1)
-				}
-			}
-			// Left
-			if y > 0 {
-				if grid[x][y-1] <= grid[x][y]+1 {
-					// Left move possible, add path
-					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y-1)
-					g.AddArc(vertexID, generateID(x, len(grid[x]), y-1), 1)
-				}
-			}
-
-			// Right
-			if y < (len(grid[x]) - 1) {
-				if grid[x][y+1] <= grid[x][y]+1 {
-					// Right move possible, add path
-					log.Debugf("ID %d: Adding arc x%d y%d --> x%d y%d", vertexID, x, y, x, y+1)
-					g.AddArc(vertexID, generateID(x, len(grid[x]), y+1), 1)
-				}
-			}
-		}
-	}
-	log.Tracef("graph: %+v", g)
-
-	return g
-}
-
-func findAll(grid [][]int, i int) []int {
-	res := make([]int, 0)
-
-	for x := 0; x < len(grid); x++ {
-		for y := 0; y < len(grid[x]); y++ {
-			log.Debugf("findAll: grid[%d][%d] = %d", x, y, grid[x][y])
-			if grid[x][y] == i {
-				vertexID := generateID(x, len(grid[x]), y)
-				log.Debugf("findAll: Appending %d", vertexID)
-				res = append(res, vertexID)
-			}
-		}
+	if (len(leftVals) < len(rightVals)) && res == 2 {
+		res = 1
 	}
 
 	return res
 }
 
-func solveDay12Part1(file string) int {
+func solvePart1(file string) int {
+	var result int = 0
+	var pairCnt int = 1
+	var left, right string
 
-	// Generate heatmap as a grid
-	heightGrid, startPos, endPos := genHeightgrid(file)
-
-	// Create Graph
-	g := genGraph(heightGrid)
-
-	// Find shortest path from S to E
-	path, err := g.Shortest(startPos, endPos)
+	// Read file
+	lines, err := aoc_helpers.ReadLines(file)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("readLines: %s", err)
 	}
 
-	return int(path.Distance)
-}
-
-func solveDay12Part2(file string) int {
-	// Generate heatmap as a grid
-	heightGrid, _, endPos := genHeightgrid(file)
-
-	// Create Graph
-	g := genGraph(heightGrid)
-
-	// Find all points with height 'a', which is 0 in the heightmap
-	startPositions := findAll(heightGrid, 0)
-
-	// Calculate distance from all starting positions
-	dist := int64(1 << 62)
-	for _, startPos := range startPositions {
-		path, err := g.Shortest(startPos, endPos)
-
-		if err == nil && path.Distance < dist {
-			log.Debugf("New distance %d is smaller than old %d, startPos %d", path.Distance, dist, startPos)
-			dist = path.Distance
+	// Go through all lines, find pairs of packets
+	for _, line := range lines {
+		if line == "" {
+			log.Debugln("")
+			pairCnt++
+			left = ""
+			right = ""
 		} else {
-			log.Debugf("No path found from %d to %d, err = %v, dist %d", startPos, endPos, err, dist)
+			if left == "" {
+				left = line
+			} else {
+				// Foudn a pair, compare them
+				right = line
+				log.Debugf("== Pair %d ==", pairCnt)
+				if isOrderedPair(left, right, "- ") == 1 {
+					// Pair is ordered, add pair index to sum
+					log.Debugln("inputs are in the right order")
+					result += pairCnt
+				} else {
+					log.Debugln("inputs are NOT in the right order")
+
+				}
+			}
 		}
 	}
-	// Find & return minimum distance
-	return int(dist)
+	return result
 }
 
 func init() {
@@ -229,6 +249,5 @@ func main() {
 		log.Fatalln("Please provide input file!")
 	}
 
-	fmt.Println("Day 12, part 1:", solveDay12Part1(args[0]))
-	fmt.Println("Day 12, part 2:", solveDay12Part2(args[0]))
+	fmt.Println("part 1:", solvePart1(args[0]))
 }
