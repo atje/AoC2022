@@ -1,7 +1,7 @@
 package aoc_helpers
 
 // Generic function to sort any list using provided function
-// The provided function should return true if left should be sorted before right i nthe resulting list
+// The provided function should return true if left should be sorted before right in the resulting list
 func merge[T comparable](left []T, right []T, f func(T, T) bool) []T {
 	merged := make([]T, 0, len(left)+len(right))
 	i, j := 0, 0
