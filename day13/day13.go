@@ -242,42 +242,6 @@ func solvePart1(file string) int {
 	return result
 }
 
-func merge(left, right []string) []string {
-	merged := make([]string, 0, len(left)+len(right))
-	i, j := 0, 0
-
-	for i < len(left) && j < len(right) {
-		if isOrderedPair(left[i], right[j], "") == 1 {
-			merged = append(merged, left[i])
-			i++
-		} else {
-			merged = append(merged, right[j])
-			j++
-		}
-	}
-
-	merged = append(merged, left[i:]...)
-	merged = append(merged, right[j:]...)
-
-	return merged
-}
-
-// Use merge sort to sort the packets
-func mergeSort(packets []string) []string {
-
-	length := len(packets)
-	if length <= 1 {
-		return packets
-	}
-
-	mid := length / 2
-	left := mergeSort(packets[:mid])
-	right := mergeSort(packets[mid:])
-
-	return merge(left, right)
-
-}
-
 func solvePart2(file string) int {
 	var result int = 0
 	var packets []string
@@ -299,8 +263,13 @@ func solvePart2(file string) int {
 	packets = append(packets, "[[2]]")
 	packets = append(packets, "[[6]]")
 
+	// Boolean return version, to be able to reuse the function in sorting call
+	fn := func(left string, right string) bool {
+		return isOrderedPair(left, right, "") == 1
+	}
+
 	// Sort packets using merge sort
-	sortedPackets := mergeSort(packets)
+	sortedPackets := aoc_helpers.MergeSort(packets, fn)
 
 	// Find index of divider packets & multiply them
 	for i, p := range sortedPackets {
