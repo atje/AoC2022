@@ -127,7 +127,7 @@ func parsePacket(p string) []string {
 	return res
 }
 
-// Returns 0 for wrong order, 1 right order, 2 for equal/undecisive
+// Returns 0 for wrong order, 1 right order, 2 for equal/indecisive
 func isOrderedPair(left string, right string, prefixStr string) int {
 	var res int = 2
 
@@ -225,7 +225,7 @@ func solvePart1(file string) int {
 			if left == "" {
 				left = line
 			} else {
-				// Foudn a pair, compare them
+				// Found a pair, compare them
 				right = line
 				log.Debugf("== Pair %d ==", pairCnt)
 				if isOrderedPair(left, right, "- ") == 1 {
@@ -252,7 +252,7 @@ func solvePart2(file string) int {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	// Go through all lines, add packets t oa new slice
+	// Go through all lines, add packets to a new slice
 	for _, line := range lines {
 		// Skip empty lines
 		if line != "" {
