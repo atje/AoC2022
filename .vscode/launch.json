@@ -5,9 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug with input file",
+            "type": "go",
+            "request": "launch",
+            "program": "${fileDirname}",
             "args": [
-                "-d", "input.txt"
+                "-t", 
+                "${input:testFile}"
             ]
-        }
-    ]
+        }   ],
+   "inputs": [
+    {
+      "id": "testFile",
+      "type": "pickString",
+      "description": "Choose input file",
+      "options": [
+        "input.txt",
+        "example.txt"
+      ],
+      "default": "example.txt"
+     }
+  ]
+
 }
