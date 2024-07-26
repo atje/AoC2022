@@ -26,9 +26,10 @@ func TestSolveDay12Part2(t *testing.T) {
 
 func TestExpandCM(t *testing.T) {
 	cm := CaveMap{
-		x0:    500,
-		y0:    0,
-		point: [][]rune{},
+		x0: 500,
+		y0: 0,
+		point: [][]rune{
+			{0}},
 	}
 
 	expectedCM := []CaveMap{
