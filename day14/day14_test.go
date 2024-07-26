@@ -15,16 +15,14 @@ func TestSolveDay14Part1(t *testing.T) {
 	aoc_helpers.ExecTests(t, solvePart1, day14p1tests)
 }
 
-/*
 var day12p2tests = []aoc_helpers.File_resT{
-	{Fname: "example.txt", Res: 140},
-	{Fname: "input.txt", Res: 24921},
+	{Fname: "example.txt", Res: 93},
+	{Fname: "input.txt", Res: 28594},
 }
 
 func TestSolveDay12Part2(t *testing.T) {
 	aoc_helpers.ExecTests(t, solvePart2, day12p2tests)
 }
-*/
 
 func TestExpandCM(t *testing.T) {
 	cm := CaveMap{

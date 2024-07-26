@@ -159,6 +159,7 @@ func dropSand(x int, y int) bool {
 		} else {
 			// Otherwise it has come to rest
 			add2Map(prevX+caveMap.x0, prevY+caveMap.y0, sandChar)
+			//			printCaveMap(caveMap)
 			return false
 		}
 		prevY = sandY
@@ -225,7 +226,7 @@ func parseLine(line string) {
 	}
 }
 
-func solvePart1(fn string) int {
+func parseIntoCaveMap(fn string) {
 	// Initialize cave map
 	caveMap = CaveMap{
 		x0: 500,
@@ -249,8 +250,14 @@ func solvePart1(fn string) int {
 	if log.GetLevel() == log.DebugLevel {
 		printCaveMap(caveMap)
 	}
-	// Then drop one grain of sand from point 500,0 into the cave until the cave is full
+}
 
+func solvePart1(fn string) int {
+
+	// Parse input file into cave map
+	parseIntoCaveMap(fn)
+
+	// Then drop one grain of sand from point 500,0 into the cave until the cave is full
 	// Calculate the number of sand grains in the map
 	sandUnits := 0
 
@@ -263,7 +270,28 @@ func solvePart1(fn string) int {
 
 func solvePart2(fn string) int {
 
-	return -1
+	// Parse input file into cave map
+	parseIntoCaveMap(fn)
+
+	// Then add floor which is y coord + 2 and going from 500,0 in both directions with
+	// the highest y coord + 2 / 2
+	newY := len(caveMap.point) - 1 + 2
+
+	caveMap = expandCM(caveMap, 500+newY, newY)
+	caveMap = expandCM(caveMap, 500-newY, newY)
+	for i := 0; i < len(caveMap.point[0]); i++ {
+		add2Map(i+caveMap.x0, newY, rockChar)
+	}
+
+	// Then drop one grain of sand from point 500,0 into the cave until the cave is full
+	// Calculate the number of sand grains in the map
+	sandUnits := 0
+
+	for !dropSand(500, -1) {
+		sandUnits++
+	}
+
+	return sandUnits
 }
 
 func init() {
