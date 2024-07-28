@@ -203,11 +203,12 @@ func isOrderedPair(left string, right string, prefixStr string) int {
 	return res
 }
 
-func solvePart1(file string) int {
+func solvePart1(args []string) int {
 	var result int = 0
 	var pairCnt int = 1
 	var left, right string
 
+	file := args[0]
 	// Read file
 	lines, err := aoc_helpers.ReadLines(file)
 	if err != nil {
@@ -242,9 +243,11 @@ func solvePart1(file string) int {
 	return result
 }
 
-func solvePart2(file string) int {
+func solvePart2(args []string) int {
 	var result int = 0
 	var packets []string
+
+	file := args[0]
 
 	// Read file
 	lines, err := aoc_helpers.ReadLines(file)
@@ -306,6 +309,6 @@ func main() {
 		log.Fatalln("Please provide input file!")
 	}
 
-	fmt.Println("part 1:", solvePart1(args[0]))
-	fmt.Println("part 2:", solvePart2(args[0]))
+	fmt.Println("part 1:", solvePart1(args))
+	fmt.Println("part 2:", solvePart2(args))
 }

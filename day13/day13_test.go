@@ -6,8 +6,8 @@ import (
 )
 
 var day13p1tests = []aoc_helpers.File_resT{
-	{Fname: "example.txt", Res: 13},
-	{Fname: "input.txt", Res: 6395},
+	{Args: []string{"example.txt"}, Res: 13},
+	{Args: []string{"input.txt"}, Res: 6395},
 }
 
 func TestSolveDay13Part1(t *testing.T) {
@@ -15,8 +15,8 @@ func TestSolveDay13Part1(t *testing.T) {
 }
 
 var day13p2tests = []aoc_helpers.File_resT{
-	{Fname: "example.txt", Res: 140},
-	{Fname: "input.txt", Res: 24921},
+	{Args: []string{"example.txt"}, Res: 140},
+	{Args: []string{"input.txt"}, Res: 24921},
 }
 
 func TestSolveDay13Part2(t *testing.T) {

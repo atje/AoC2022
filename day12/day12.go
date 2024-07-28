@@ -150,8 +150,9 @@ func findAll(grid [][]int, i int) []int {
 	return res
 }
 
-func solveDay12Part1(file string) int {
+func solveDay12Part1(args []string) int {
 
+	file := args[0]
 	// Generate heatmap as a grid
 	heightGrid, startPos, endPos := genHeightgrid(file)
 
@@ -167,7 +168,8 @@ func solveDay12Part1(file string) int {
 	return int(path.Distance)
 }
 
-func solveDay12Part2(file string) int {
+func solveDay12Part2(args []string) int {
+	file := args[0]
 	// Generate heatmap as a grid
 	heightGrid, _, endPos := genHeightgrid(file)
 
@@ -215,6 +217,6 @@ func main() {
 		log.Fatalln("Please provide input file!")
 	}
 
-	fmt.Println("Day 12, part 1:", solveDay12Part1(args[0]))
-	fmt.Println("Day 12, part 2:", solveDay12Part2(args[0]))
+	fmt.Println("Day 12, part 1:", solveDay12Part1(args))
+	fmt.Println("Day 12, part 2:", solveDay12Part2(args))
 }

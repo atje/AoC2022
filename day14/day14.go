@@ -252,8 +252,9 @@ func parseIntoCaveMap(fn string) {
 	}
 }
 
-func solvePart1(fn string) int {
+func solvePart1(args []string) int {
 
+	fn := args[0]
 	// Parse input file into cave map
 	parseIntoCaveMap(fn)
 
@@ -268,8 +269,9 @@ func solvePart1(fn string) int {
 	return sandUnits
 }
 
-func solvePart2(fn string) int {
+func solvePart2(args []string) int {
 
+	fn := args[0]
 	// Parse input file into cave map
 	parseIntoCaveMap(fn)
 
@@ -318,6 +320,6 @@ func main() {
 		log.Fatalln("Please provide input file!")
 	}
 
-	fmt.Println("part 1:", solvePart1(args[0]))
-	fmt.Println("part 2:", solvePart2(args[0]))
+	fmt.Println("part 1:", solvePart1(args))
+	fmt.Println("part 2:", solvePart2(args))
 }
