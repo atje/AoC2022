@@ -70,10 +70,8 @@ func calcRadiusOnRow(s sensorType, row int) int {
 
 }
 
-// Parse a line of coordinates describing rock structue
-// line consists of <value> [--> <value>]+
-// <value> consists of coordinates on the format x, y
-// x is horisontal, y vertical
+// Parse a line into sensor struct
+// Also calculates Taxicab distance
 func parseLine(line string) sensorType {
 	log.Tracef("parseLine '%s'", line)
 
