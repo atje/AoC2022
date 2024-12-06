@@ -14,13 +14,11 @@ func TestSolveDay15Part1(t *testing.T) {
 	aoc_helpers.ExecTests(t, solvePart1, p1tests)
 }
 
-/*
 var p2tests = []aoc_helpers.File_resT{
-	{Fname: "example.txt", Res: 93},
+	{Args: []string{"example.txt", "20"}, Res: 56000011},
 	//{Fname: "input.txt", Res: 28594},
 }
 
 func TestSolveDay15Part2(t *testing.T) {
 	aoc_helpers.ExecTests(t, solvePart2, p2tests)
 }
-*/
