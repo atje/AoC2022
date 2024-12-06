@@ -21,7 +21,8 @@
       "description": "Choose input file",
       "options": [
         "input.txt",
-        "example.txt"
+        "example.txt",
+        "debug.txt"
       ],
       "default": "example.txt"
      }
