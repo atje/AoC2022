@@ -36,6 +36,62 @@ import (
 
 var dbgFlag = flag.Bool("d", false, "debug flag")
 var traceFlag = flag.Bool("t", false, "trace flag")
+var dumpNOKReport = flag.Bool("n", false, "dump invalid reports")
+
+func isAdjacent(v1, v2 int) bool {
+	diff := v1 - v2
+	if diff < 0 {
+		diff = -diff
+	}
+	if (diff > 0) && (diff < 4) {
+		return true
+	}
+	return false
+}
+
+func deleteElement(slice []int, index int) []int {
+	return append(slice[:index], slice[index+1:]...)
+}
+
+func checkReport(n int, values []int) bool {
+	prev := -1
+	dirInc := false
+	safe := false
+
+	for i, v := range values {
+		if i > 0 {
+			if i == 1 {
+				if prev < v {
+					dirInc = true
+				} else if prev == v {
+					safe = false
+					break
+				}
+			}
+			if isAdjacent(prev, v) && dirInc && (prev < v) {
+				safe = true
+			} else if isAdjacent(prev, v) && !dirInc && (prev > v) {
+				safe = true
+			} else {
+				safe = false
+				break
+			}
+		}
+		prev = v
+
+	}
+
+	if safe {
+		log.Printf("%d: Report OK\n", n+1)
+	} else {
+		log.Printf("%d: Report NOK\n", n+1)
+		if *dumpNOKReport {
+			fmt.Println(values)
+		}
+	}
+
+	return safe
+}
 
 func solvePart1(args []string) int {
 
@@ -48,54 +104,62 @@ func solvePart1(args []string) int {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	for _, line := range lines {
+	for n, line := range lines {
 
 		values := strings.Fields(line)
-		prev := 0
-		dirInc := false
-		safe := false
+		var valuesInt []int
 
-		for i, k := range values {
+		for _, k := range values {
 			v, _ := strconv.Atoi(k)
-			if i > 0 {
-				if i == 1 {
-					if prev < v {
-						dirInc = true
-					} else if prev == v {
-						safe = false
-						break
-					}
-				}
-				diff := prev - v
-				if diff < 0 {
-					diff = -diff
-				}
-				if dirInc && (diff > 0) && (diff < 4) && (prev < v) {
-					safe = true
-				} else if !dirInc && (diff > 0) && (diff < 4) && (prev > v) {
-					safe = true
-				} else {
-					safe = false
-					break
-				}
-			}
-			prev = v
-
+			valuesInt = append(valuesInt, v)
 		}
-		if safe {
+		if checkReport(n+1, valuesInt) {
 			safeReports++
 		}
 	}
-
 	return safeReports
 }
 
 func solvePart2(args []string) int {
-	score := 0
+	fn := args[0]
+
+	safeReports := 0
 
 	// Parse input file
+	lines, err := aoc_helpers.ReadLines(fn)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
 
-	return score
+	for n, line := range lines {
+
+		values := strings.Fields(line)
+		var valuesInt []int
+
+		for _, k := range values {
+			v, _ := strconv.Atoi(k)
+			valuesInt = append(valuesInt, v)
+		}
+		res := checkReport(n+1, valuesInt)
+		if res {
+			log.Printf("%d: Report OK\n", n+1)
+			safeReports++
+		} else {
+			for i := range valuesInt {
+				s1 := make([]int, len(valuesInt))
+				copy(s1, valuesInt)
+				res = checkReport(n+1, deleteElement(s1, i))
+				if res {
+					break
+				}
+			}
+			if res {
+				safeReports++
+			}
+		}
+	}
+
+	return safeReports
 }
 
 func init() {
