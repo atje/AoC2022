@@ -20,3 +20,19 @@ func ReadLines(path string) ([]string, error) {
 	}
 	return lines, scanner.Err()
 }
+
+// Read all lines from a file into an array of strings
+func ReadLinesToByteSlice(path string) ([][]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines [][]byte
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, []byte(scanner.Text()))
+	}
+	return lines, scanner.Err()
+}
