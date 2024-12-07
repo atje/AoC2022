@@ -15,8 +15,8 @@ func TestSolvePart1(t *testing.T) {
 }
 
 var p2tests = []aoc_helpers.File_resT{
-	{Args: []string{"example2.txt"}, Res: 48},
-	// {Args: []string{"input.txt"}, Res: 88802350},
+	{Args: []string{"example.txt"}, Res: 9},
+	{Args: []string{"input.txt"}, Res: 1880},
 }
 
 func TestSolvePart2(t *testing.T) {

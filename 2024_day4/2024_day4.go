@@ -75,6 +75,23 @@ func wordSearch(matrix [][]byte, x, y int) int {
 	return res
 }
 
+func wordSearch2(matrix [][]byte, x, y int) int {
+
+	// Check that an X from given position fits within the matrix
+	if x-1 < 0 || x+1 >= len(matrix) || y-1 < 0 || y+1 >= len(matrix[x]) {
+		return 0
+	}
+
+	// Check for left diagonal, two cases
+	// Chack for right diagonal, two cases
+	if matrix[x-1][y-1] == S && matrix[x+1][y+1] == M || matrix[x-1][y-1] == M && matrix[x+1][y+1] == S {
+		if matrix[x-1][y+1] == S && matrix[x+1][y-1] == M || matrix[x-1][y+1] == M && matrix[x+1][y-1] == S {
+			return 1
+		}
+	}
+	return 0
+}
+
 func solvePart1(args []string) int {
 	fn := args[0]
 	res := 0
@@ -100,12 +117,20 @@ func solvePart1(args []string) int {
 func solvePart2(args []string) int {
 	fn := args[0]
 	res := 0
-	//	regex := regexp.MustCompile(`do\(\)|don't\(\)|mul\((\d+),(\d+)\)`)
 
 	// Parse input file
-	_, err := aoc_helpers.ReadLines(fn)
+	lines, err := aoc_helpers.ReadLinesToByteSlice(fn)
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
+	}
+
+	// First, find all positions where M is
+	for i := range lines {
+		for j := range lines[0] {
+			if lines[i][j] == A {
+				res = res + wordSearch2(lines, i, j)
+			}
+		}
 	}
 
 	return res
