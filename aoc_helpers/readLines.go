@@ -21,7 +21,7 @@ func ReadLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-// Read all lines from a file into an array of strings
+// Read all lines from a file into an array of byte arrays
 func ReadLinesToByteSlice(path string) ([][]byte, error) {
 	file, err := os.Open(path)
 	if err != nil {
