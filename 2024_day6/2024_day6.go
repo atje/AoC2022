@@ -49,7 +49,7 @@ func findGuardPos(m [][]byte) (int, int) {
 			guardX = i
 			guardY = loc[0]
 			if *traceFlag {
-				fmt.Println("Found guard in position ", guardX, guardY)
+				fmt.Println("[TRACE] Found guard in position ", guardX, guardY)
 			}
 			break
 		}
@@ -72,24 +72,44 @@ func dirStr(dir byte) string {
 	return "Err"
 }
 
+func initializeMap(row, col int) [][]byte {
+	m := make([][]byte, row)
+	for i := range m {
+		m[i] = make([]byte, col)
+	}
+	return m
+}
+
+func stepGuard(x, y int, heading byte) (int, int) {
+	switch {
+	case heading&(BC_DU) > 0:
+		return x - 1, y
+	case heading&(BC_UD) > 0:
+		return x + 1, y
+	case heading&(BC_LR) > 0:
+		return x, y + 1
+	case heading&(BC_RL) > 0:
+		return x, y - 1
+	}
+	return x, y
+}
+
+func isBackToStart(nx, ny, x, y int, lheading, heading byte, rotcount int) bool {
+	return nx == x && ny == y && lheading == heading && rotcount < 2
+}
+
 // Walk guard in direction heading from position x, y
 // Return true if guard leaves the map, false otherwise
 // Return true if falling out of area, false otherwise, and number of steps taken
 func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, [][]byte) {
-	nx := x
-	ny := y
+	nx, ny := x, y
 	lheading := heading
 
 	if *dbgFlag {
-		fmt.Printf("walkGuard(%s, %d, %d)\n", dirStr(heading), x, y)
+		fmt.Printf("[DEBUG] walkGuard(%s, %d, %d)\n", dirStr(heading), x, y)
 	}
 
-	trailmap := make([][]byte, len(areamap))
-
-	for i := range trailmap {
-		trailmap[i] = make([]byte, len(areamap[0]))
-	}
-
+	trailmap := initializeMap(len(areamap), len(areamap[0]))
 	maxstep := len(areamap) * len(areamap[0])
 	rotcount := 0
 
@@ -99,16 +119,7 @@ func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, 
 		// Mark trail
 		trailmap[nx][ny] = genBC(trailmap[nx][ny], heading)
 
-		switch {
-		case heading&(BC_DU) > 0:
-			nx = nx - 1
-		case heading&(BC_UD) > 0:
-			nx = nx + 1
-		case heading&(BC_LR) > 0:
-			ny = ny + 1
-		case heading&(BC_RL) > 0:
-			ny = ny - 1
-		}
+		nx, ny = stepGuard(nx, ny, heading)
 
 		// Check if guard is out of bounds
 		// If so, return true
@@ -118,7 +129,7 @@ func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, 
 
 		// Check if guard is back to start position heading as started, and have not gotten there by rotating
 		// If so, return false
-		if loopcheck && nx == x && ny == y && (lheading == heading) && rotcount < 2 { // Check for loop
+		if loopcheck && isBackToStart(nx, ny, x, y, lheading, heading, rotcount) { // Check for loop
 			return false, trailmap
 		}
 
@@ -127,7 +138,7 @@ func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, 
 				//	fmt.Printf("Obstacle at (%d, %d)\n", nx, ny)
 			}
 			heading = rotClockwise(heading)
-			rotcount = rotcount + 1
+			rotcount++
 			nx, ny = px, py
 		} else {
 			rotcount = 0
@@ -147,17 +158,19 @@ func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, 
 		}
 
 		if *dbgFlag {
-			fmt.Printf("Moving to (%d, %d) %s\n", nx, ny, dirStr(heading))
+			fmt.Printf("[DEBUG] Moving to (%d, %d) %s\n", nx, ny, dirStr(heading))
 		}
 
 	}
 }
 
+// Combine current direction with earlier point passing direction
 func genBC(cur byte, heading byte) byte {
 
 	return cur | heading
 }
 
+// Check if guard is out of map
 func outOfMatrix(m [][]byte, x, y int) bool {
 	return x < 0 || y < 0 || x >= len(m) || y >= len(m[0])
 }
@@ -189,28 +202,10 @@ func printMap(obsmap, trailmap [][]byte) {
 	}
 }
 
-func leftPos(dir byte, x, y int) (int, int) {
-	switch {
-	case dir&(BC_DU) > 0:
-		return x, y - 1
-	case dir&(BC_UD) > 0:
-		return x, y + 1
-	case dir&(BC_LR) > 0:
-		return x - 1, y
-	case dir&(BC_RL) > 0:
-		return x + 1, y
-	}
-	return x, y
-}
-
 // Rotate clockwise from current direction
 func rotClockwise(dir byte) byte {
+	// Shift left by 1 and wrap around the overflow bit to the right
 	return ((dir << 1) | (dir >> 3)) & 0b1111
-}
-
-// Rotate counterclockwise from current direction
-func rotCounterClockwise(dir byte) byte {
-	return ((dir >> 1) | (dir << 3)) & 0b1111
 }
 
 func solvePart1(args []string) int {
@@ -232,7 +227,7 @@ func solvePart1(args []string) int {
 	for i := range trailmap {
 		for j := range trailmap[i] {
 			if trailmap[i][j] > 0 {
-				steps = steps + 1
+				steps++
 			}
 		}
 	}
@@ -255,52 +250,35 @@ func solvePart2(args []string) int {
 	guardPos := BC_DU
 
 	_, trailmap := walkGuard(guardPos, guardX, guardY, lines, false)
-	//trailmap[startX][startY] = BC_GUARD_STR
 
 	// Check all trail positions for potential loops
 	for i := range trailmap {
 		for j := range trailmap[i] {
-			if *dbgFlag {
-				fmt.Printf("Checking position %d, %d - %b\n", i, j, trailmap[i][j])
+			// Check if the position is already an obstacle, or if this is the guard starting position
+			// If so, skip this position
+			if trailmap[i][j] == 0 || (lines[i][j] == OBSTACLE) || (i == startX && j == startY) {
+				continue
 			}
-			if trailmap[i][j] != 0 {
-				//d := trailmap[i][j]
 
-				// Check all directions
-				//for d := BC_LR; d <= BC_DU; d = d << 1 {
-				//	if *dbgFlag {
-				//		fmt.Printf("Checking (%d, %d) %s\n", i, j, dirStr(d))
-				//	}
+			if *dbgFlag {
+				fmt.Printf("[DEBUG] Checking position %d, %d - %b\n", i, j, trailmap[i][j])
+			}
 
-				//	if trailmap[i][j]&d > 0 {
-				// Check for loop 90 degrees to the right
-				//ldir := rotClockwise(d)
-				//obsX, obsY := leftPos(ldir, i, j)
+			if *dbgFlag {
+				fmt.Printf("[DEBUG] Testing obstacle at (%d, %d)\n", i, j)
+			}
+			tmp := lines[i][j]
+			lines[i][j] = OBSTACLE
+			out, _ := walkGuard(guardPos, startX, startY, lines, true)
+			lines[i][j] = tmp
 
-				//if !outOfMatrix(lines, obsX, obsY) {
-				// Put a temporary obstacle to the left of the current position
-				// Check if the position is already an obstacle, or if this is the guard starting position
-				// If so, skip this position
-				if (lines[i][j] != OBSTACLE) && !(i == startX && j == startY) {
-					if *dbgFlag {
-						fmt.Printf("Testing obstacle at (%d, %d)\n", i, j)
-					}
-					tmp := lines[i][j]
-					lines[i][j] = OBSTACLE
-					out, _ := walkGuard(guardPos, startX, startY, lines, true)
-					lines[i][j] = tmp
-					if !out {
-						// Put a new obstacle in front of current position
-						lines[i][j] = NEW_OBSTACLE
-						res = res + 1
-						if *dbgFlag {
-							fmt.Printf("O #%d (%d, %d)\n", res, i, j)
-						}
-					}
+			if !out {
+				// Put a new obstacle in front of current position
+				lines[i][j] = NEW_OBSTACLE
+				res++
+				if *dbgFlag {
+					fmt.Printf("O #%d (%d, %d)\n", res, i, j)
 				}
-				//}
-				//	}
-				//}
 			}
 		}
 	}

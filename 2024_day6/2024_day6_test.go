@@ -25,3 +25,22 @@ var p2tests = []aoc_helpers.File_resT{
 func TestSolvePart2(t *testing.T) {
 	aoc_helpers.ExecTests(t, solvePart2, p2tests)
 }
+
+func TestRotClockwise(t *testing.T) {
+	tests := []struct {
+		input    byte
+		expected byte
+	}{
+		{BC_DU, BC_LR},
+		{BC_LR, BC_UD},
+		{BC_UD, BC_RL},
+		{BC_RL, BC_DU},
+	}
+
+	for _, test := range tests {
+		result := rotClockwise(test.input)
+		if result != test.expected {
+			t.Errorf("rotClockwise(%b) = %b; want %b", test.input, result, test.expected)
+		}
+	}
+}
