@@ -17,21 +17,23 @@ const NEW_OBSTACLE byte = 'O'
 const BC_UD_STR byte = '|'
 const BC_LR_STR byte = '-'
 const BC_X_STR byte = '+'
+const BC_GUARD_STR byte = '^'
 
 // Use bitpositions to indicate earlier point passing movement direction of guard
-// There are eigth possible ways the guard could pass through a point
+// There are four possible ways the guard could pass through a point
+// 1. Up to Down (UD)
+// 2. Down to Up (DU)
+// 3. Left to Right (LR)
+// 4. Right to Left (RL)
+// These are encoded in a 4 bit byte so we can use bitwise operations to check for earlier point passing, and
+// to combine them with the current direction, and
+// rotate by using barrel shifting
 const EMPTY byte = 0
-const BC_LR byte = 0b01
-const BC_RL byte = 0b10
-const BC_UD byte = 0b100
+const BC_LR byte = 0b1
+const BC_UD byte = 0b10
+const BC_RL byte = 0b100
 const BC_DU byte = 0b1000
 
-/*
-const BC_LD byte = 0b10000
-const BC_DR byte = 0b100000
-const BC_RU byte = 0b1000000
-const BC_UL byte = 0b10000000
-*/
 var dbgFlag = flag.Bool("d", false, "debug flag")
 var traceFlag = flag.Bool("t", false, "trace flag")
 
@@ -46,7 +48,9 @@ func findGuardPos(m [][]byte) (int, int) {
 		if loc != nil {
 			guardX = i
 			guardY = loc[0]
-			//fmt.Println("Found guard in position ", guardX, guardY)
+			if *traceFlag {
+				fmt.Println("Found guard in position ", guardX, guardY)
+			}
 			break
 		}
 	}
@@ -68,54 +72,85 @@ func dirStr(dir byte) string {
 	return "Err"
 }
 
-func moveGuard(dir byte, x, y int, rotate90 bool, reverse ...bool) (byte, int, int) {
+// Walk guard in direction heading from position x, y
+// Return true if guard leaves the map, false otherwise
+// Return true if falling out of area, false otherwise, and number of steps taken
+func walkGuard(heading byte, x, y int, areamap [][]byte, loopcheck bool) (bool, [][]byte) {
 	nx := x
 	ny := y
-	ndir := dir
-	rev := false
+	lheading := heading
 
-	if len(reverse) > 0 {
-		rev = reverse[0]
+	if *dbgFlag {
+		fmt.Printf("walkGuard(%s, %d, %d)\n", dirStr(heading), x, y)
 	}
 
-	if rotate90 {
-		switch {
-		case dir&BC_DU > 0:
-			nx = nx + 1
-			ny = ny + 1
-			ndir = BC_LR
-		case dir&BC_UD > 0:
-			nx = nx - 1
-			ny = ny - 1
-			ndir = BC_RL
-		case dir&BC_LR > 0:
-			nx = nx + 1
-			ny = ny - 1
-			ndir = BC_UD
-		case dir&BC_RL > 0:
-			nx = nx - 1
-			ny = ny + 1
-			ndir = BC_DU
-		}
-	} else {
-		v := 1
-		if rev {
-			v = -1
-		}
-		switch {
-		case dir&(BC_DU) > 0:
-			nx = nx - v
-		case dir&(BC_UD) > 0:
-			nx = nx + v
-		case dir&(BC_LR) > 0:
-			ny = ny + v
-		case dir&(BC_RL) > 0:
-			ny = ny - v
-		}
+	trailmap := make([][]byte, len(areamap))
+
+	for i := range trailmap {
+		trailmap[i] = make([]byte, len(areamap[0]))
 	}
 
-	//	fmt.Printf("moveGuard(%b, %d,%d,%t, %t) --> %b, %d, %d\n", dir, x, y, rotate90, rev, ndir, nx, ny)
-	return ndir, nx, ny
+	maxstep := len(areamap) * len(areamap[0])
+	rotcount := 0
+
+	for {
+		px, py := nx, ny
+
+		// Mark trail
+		trailmap[nx][ny] = genBC(trailmap[nx][ny], heading)
+
+		switch {
+		case heading&(BC_DU) > 0:
+			nx = nx - 1
+		case heading&(BC_UD) > 0:
+			nx = nx + 1
+		case heading&(BC_LR) > 0:
+			ny = ny + 1
+		case heading&(BC_RL) > 0:
+			ny = ny - 1
+		}
+
+		// Check if guard is out of bounds
+		// If so, return true
+		if outOfMatrix(areamap, nx, ny) {
+			return true, trailmap
+		}
+
+		// Check if guard is back to start position heading as started, and have not gotten there by rotating
+		// If so, return false
+		if loopcheck && nx == x && ny == y && (lheading == heading) && rotcount < 2 { // Check for loop
+			return false, trailmap
+		}
+
+		if areamap[nx][ny] == OBSTACLE {
+			if *dbgFlag {
+				//	fmt.Printf("Obstacle at (%d, %d)\n", nx, ny)
+			}
+			heading = rotClockwise(heading)
+			rotcount = rotcount + 1
+			nx, ny = px, py
+		} else {
+			rotcount = 0
+		}
+
+		// Check if guard is stuck in one place just rotating
+		// If so, return false
+		if rotcount > 3 {
+			return false, trailmap
+		}
+
+		maxstep = maxstep - 1
+		// Check if guard has moved too many steps to avoid infinite loop
+		// If so, return false
+		if maxstep < 0 {
+			return false, trailmap
+		}
+
+		if *dbgFlag {
+			fmt.Printf("Moving to (%d, %d) %s\n", nx, ny, dirStr(heading))
+		}
+
+	}
 }
 
 func genBC(cur byte, heading byte) byte {
@@ -143,6 +178,8 @@ func printMap(obsmap, trailmap [][]byte) {
 				b = byte('|')
 			} else if trailmap[i][j]&(BC_LR|BC_RL) > 0 {
 				b = byte('-')
+			} else if trailmap[i][j] == BC_GUARD_STR {
+				b = BC_GUARD_STR
 			} else {
 				b = obsmap[i][j]
 			}
@@ -152,65 +189,32 @@ func printMap(obsmap, trailmap [][]byte) {
 	}
 }
 
-// Rotate clockwise from current direction
-func rotClockwise(dir byte) byte {
+func leftPos(dir byte, x, y int) (int, int) {
 	switch {
 	case dir&(BC_DU) > 0:
-		return BC_LR
+		return x, y - 1
 	case dir&(BC_UD) > 0:
-		return BC_RL
+		return x, y + 1
 	case dir&(BC_LR) > 0:
-		return BC_UD
+		return x - 1, y
 	case dir&(BC_RL) > 0:
-		return BC_DU
+		return x + 1, y
 	}
-	return dir
+	return x, y
 }
 
-// Check if there is a somewhere from the startx, starty position moving in direction dir
-// A path has to contain an obstacle preceeded by a tail in the same direction as dir
-func checkPath(obsmap, trailmap [][]byte, dir byte, startx, starty int) bool {
-	nx, ny := 0, 0
-	ndir := dir
+// Rotate clockwise from current direction
+func rotClockwise(dir byte) byte {
+	return ((dir << 1) | (dir >> 3)) & 0b1111
+}
 
-	px := startx
-	py := starty
-	for {
-		switch {
-		case ndir&(BC_DU) > 0:
-			nx = -1
-		case ndir&(BC_UD) > 0:
-			nx = 1
-		case ndir&(BC_LR) > 0:
-			ny = 1
-		case ndir&(BC_RL) > 0:
-			ny = -1
-		}
-
-		px = px + nx
-		py = py + ny
-
-		fmt.Println("Moving ", dirStr(ndir), px, py)
-
-		if px == startx && py == starty {
-			fmt.Println("Loop!")
-			// We're in a loop if we're back where started
-			return true
-		}
-
-		if outOfMatrix(trailmap, px, py) {
-			fmt.Println("Out")
-			return false
-		} else if obsmap[px][py] == OBSTACLE {
-			fmt.Println("Turning right")
-			ndir = rotClockwise(ndir)
-		}
-	}
+// Rotate counterclockwise from current direction
+func rotCounterClockwise(dir byte) byte {
+	return ((dir >> 1) | (dir << 3)) & 0b1111
 }
 
 func solvePart1(args []string) int {
 	fn := args[0]
-	res := 0
 
 	// Parse input file
 	lines, err := aoc_helpers.ReadLinesToByteSlice(fn)
@@ -222,43 +226,17 @@ func solvePart1(args []string) int {
 	guardX, guardY := findGuardPos(lines)
 	guardPos := BC_DU
 
-	// Simulate guard walking until she leaves map
-	for {
-		newX, newY := 0, 0
-		lines[guardX][guardY] = BREADCRUMB
+	_, trailmap := walkGuard(guardPos, guardX, guardY, lines, false)
 
-		guardPos, newX, newY = moveGuard(guardPos, guardX, guardY, false)
-
-		// Check if guard leaves the matrix
-		if outOfMatrix(lines, newX, newY) {
-			break
-		}
-
-		// Check for obstacles in new position, turn right 90 degrees
-		if lines[newX][newY] == OBSTACLE {
-			guardPos, newX, newY = moveGuard(guardPos, newX, newY, true)
-
-		}
-
-		// Check if guard leaves the matrix
-		if outOfMatrix(lines, newX, newY) {
-			break
-		}
-
-		guardX = newX
-		guardY = newY
-	}
-
-	// Count breadcrumbs on the map
-	for _, l := range lines {
-		for _, b := range l {
-			if b == BREADCRUMB {
-				res = res + 1
+	steps := 0
+	for i := range trailmap {
+		for j := range trailmap[i] {
+			if trailmap[i][j] > 0 {
+				steps = steps + 1
 			}
 		}
 	}
-
-	return res
+	return steps
 }
 
 func solvePart2(args []string) int {
@@ -266,90 +244,70 @@ func solvePart2(args []string) int {
 	res := 0
 
 	// Parse input file
-	obsmap, err := aoc_helpers.ReadLinesToByteSlice(fn)
+	lines, err := aoc_helpers.ReadLinesToByteSlice(fn)
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	// Create an empty trail map
-	trailmap := make([][]byte, len(obsmap))
-
-	for i := range trailmap {
-		trailmap[i] = make([]byte, len(obsmap[0]))
-	}
-
 	// Find starting position of guard
-	startX, startY := findGuardPos(obsmap)
+	startX, startY := findGuardPos(lines)
 	guardX, guardY := startX, startY
 	guardPos := BC_DU
 
-	// Simulate guard walking until she leaves map
-	for {
-		newX, newY := 0, 0
+	_, trailmap := walkGuard(guardPos, guardX, guardY, lines, false)
+	//trailmap[startX][startY] = BC_GUARD_STR
 
-		trailmap[guardX][guardY] = genBC(trailmap[guardX][guardY], guardPos)
-
-		guardPos, newX, newY = moveGuard(guardPos, guardX, guardY, false)
-
-		// Check if guard leaves the matrix
-		if outOfMatrix(obsmap, newX, newY) {
-			break
-		}
-
-		// Check for obstacles in new position, turn right 90 degrees
-		if obsmap[newX][newY] == OBSTACLE {
-			guardPos, newX, newY = moveGuard(guardPos, newX, newY, true)
-			trailmap[guardX][guardY] = genBC(trailmap[guardX][guardY], guardPos)
-
-			// Check if guard leaves the matrix
-			if outOfMatrix(obsmap, newX, newY) {
-				break
+	// Check all trail positions for potential loops
+	for i := range trailmap {
+		for j := range trailmap[i] {
+			if *dbgFlag {
+				fmt.Printf("Checking position %d, %d - %b\n", i, j, trailmap[i][j])
 			}
+			if trailmap[i][j] != 0 {
+				//d := trailmap[i][j]
 
+				// Check all directions
+				//for d := BC_LR; d <= BC_DU; d = d << 1 {
+				//	if *dbgFlag {
+				//		fmt.Printf("Checking (%d, %d) %s\n", i, j, dirStr(d))
+				//	}
+
+				//	if trailmap[i][j]&d > 0 {
+				// Check for loop 90 degrees to the right
+				//ldir := rotClockwise(d)
+				//obsX, obsY := leftPos(ldir, i, j)
+
+				//if !outOfMatrix(lines, obsX, obsY) {
+				// Put a temporary obstacle to the left of the current position
+				// Check if the position is already an obstacle, or if this is the guard starting position
+				// If so, skip this position
+				if (lines[i][j] != OBSTACLE) && !(i == startX && j == startY) {
+					if *dbgFlag {
+						fmt.Printf("Testing obstacle at (%d, %d)\n", i, j)
+					}
+					tmp := lines[i][j]
+					lines[i][j] = OBSTACLE
+					out, _ := walkGuard(guardPos, startX, startY, lines, true)
+					lines[i][j] = tmp
+					if !out {
+						// Put a new obstacle in front of current position
+						lines[i][j] = NEW_OBSTACLE
+						res = res + 1
+						if *dbgFlag {
+							fmt.Printf("O #%d (%d, %d)\n", res, i, j)
+						}
+					}
+				}
+				//}
+				//	}
+				//}
+			}
 		}
-
-		// Move guard to new position
-		guardX = newX
-		guardY = newY
 	}
 
-	// Check trail map for potential loops by walking through it again
-	guardX, guardY = startX, startY
-	guardPos = BC_DU
-
-	for {
-		newX, newY := 0, 0
-
-		guardPos, newX, newY = moveGuard(guardPos, guardX, guardY, false)
-
-		if outOfMatrix(obsmap, newX, newY) {
-			break
-		}
-
-		// Check for obstacles in new position, turn right 90 degrees
-		if obsmap[newX][newY] == OBSTACLE {
-			guardPos, newX, newY = moveGuard(guardPos, newX, newY, true)
-
-			// Check if guard leaves the matrix
-			if outOfMatrix(obsmap, newX, newY) {
-				break
-			}
-
-		}
-		fmt.Println("Guard move ", newX, newY)
-
-		newDir := rotClockwise(guardPos)
-		if checkPath(obsmap, trailmap, newDir, guardX, guardY) {
-			obsmap[newX][newY] = NEW_OBSTACLE
-			res = res + 1
-			fmt.Printf("O #%d (%d, %d)\tguardPos %s\n", res, newX, newY, dirStr(guardPos))
-		}
-
-		guardX = newX
-		guardY = newY
+	if *dbgFlag {
+		printMap(lines, trailmap)
 	}
-
-	printMap(obsmap, trailmap)
 
 	return res
 }
