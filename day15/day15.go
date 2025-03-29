@@ -46,7 +46,6 @@ type sensorType struct {
 
 var dbgFlag = flag.Bool("d", false, "debug flag")
 var traceFlag = flag.Bool("t", false, "trace flag")
-var nFlag = flag.Int("n", 26, "row to calculate beacon positions")
 
 // abs returns the absolute value of x.
 func abs(x int) int {
@@ -142,14 +141,63 @@ func solvePart1(args []string) int {
 	return len(set) - 1
 }
 
-/*
-	func solvePart2(fn string) int {
-		// Parse input file
-		parseFile(fn)
+func isInRange(sensors []sensorType, x, y int) bool {
+	for _, s := range sensors {
+		if *dbgFlag {
+			fmt.Printf("[DEBUG] Checking sensor at x = %d, y = %d with beacon at x = %d, y = %d\n", s.pos.x, s.pos.y, s.beacon.x, s.beacon.y)
+		}
 
-		return -1
+		// Calculate the Manhattan distance from the sensor to the point (x, y)
+		distance := calcTCDist(s.pos.x, s.pos.y, x, y)
+
+		// If the distance is within the sensor's range, return true
+		if distance <= s.tcDist {
+			if *dbgFlag {
+				fmt.Printf("[DEBUG] Point x = %d, y = %d is within range of sensor at x = %d, y = %d\n", x, y, s.pos.x, s.pos.y)
+			}
+			return true
+		}
 	}
-*/
+
+	// If no sensor covers the point, return false
+	return false
+}
+
+// x & y coordinate >=0 and <= 4000000
+func solvePart2(args []string) int {
+
+	maxVal, _ := strconv.Atoi(args[2])
+
+	// Parse input file
+	sensors := parseFile(args[0])
+
+	for x := 0; x <= maxVal; x++ {
+		y := 0
+		for y <= maxVal {
+			// Check if the current point is within range of any sensor
+			inRange := false
+			for _, s := range sensors {
+				// Calculate Manhattan distance between sensor and point
+				dist := abs(s.pos.x-x) + abs(s.pos.y-y)
+				if dist <= s.tcDist {
+					// Skip to the next point outside the sensor's range
+					y = s.pos.y + (s.tcDist - abs(s.pos.x-x)) + 1
+					inRange = true
+					break
+				}
+			}
+
+			// If the point is not in range of any sensor, return it
+			if !inRange {
+				fmt.Printf("Point x = %d, y = %d\n", x, y)
+				return x*4000000 + y
+			}
+		}
+	}
+	log.Warn("No valid point found within the given range.")
+	return -1
+}
+
 func init() {
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
@@ -159,6 +207,7 @@ func init() {
 	log.SetLevel(log.WarnLevel)
 }
 
+// Expected input args on commandline <filename> <part1_row> <part2_max>
 func main() {
 
 	flag.Parse()
@@ -175,5 +224,5 @@ func main() {
 	}
 
 	fmt.Println("part 1:", solvePart1(args))
-	//fmt.Println("part 2:", solvePart2(args[0]))
+	fmt.Println("part 2:", solvePart2(args))
 }
