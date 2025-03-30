@@ -47,6 +47,31 @@ func isEqual(t int, v []int) bool {
 	return isEqual(t, append(plus, v[2:]...)) || isEqual(t, append(mult, v[2:]...))
 }
 
+// concatenate takes two integers and returns their concatenation as an integer
+// For example, concatenate(1, 2) returns 12.
+func concatenate(v1, v2 int) int {
+	c := fmt.Sprintf("%d%d", v1, v2)
+	result, err := strconv.Atoi(c)
+	if err != nil {
+		log.Fatalf("Error converting concatenated string to int: %v", err)
+	}
+	return result
+}
+
+func isEqual2(t int, v []int) bool {
+
+	if len(v) == 1 {
+		return t == v[0]
+	}
+
+	plus := []int{v[0] + v[1]}
+	mult := []int{v[0] * v[1]}
+	c := concatenate(v[0], v[1])
+	conc := []int{c}
+
+	return isEqual2(t, append(plus, v[2:]...)) || isEqual2(t, append(mult, v[2:]...)) || isEqual2(t, append(conc, v[2:]...))
+}
+
 func solvePart1(args []string) int {
 	lines, err := aoc_helpers.ReadLines(args[0])
 	if err != nil {
@@ -67,7 +92,22 @@ func solvePart1(args []string) int {
 }
 
 func solvePart2(args []string) int {
-	return -1
+	lines, err := aoc_helpers.ReadLines(args[0])
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+
+	sum := 0
+	for n, line := range lines {
+		numbers, _ := parseNumbers(line)
+		if isEqual2(numbers[0], numbers[1:]) {
+			if *dbgFlag {
+				fmt.Printf("[DEBUG] line %d: calibration line ok, value %d\n", n+1, numbers[0])
+			}
+			sum = sum + numbers[0]
+		}
+	}
+	return sum
 }
 
 func init() {
