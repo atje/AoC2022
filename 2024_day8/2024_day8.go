@@ -37,20 +37,18 @@ func initializeMap(row, col int) [][]byte {
 
 func addAntenna(m [][]byte, ant coordT) {
 	if ant.x < 0 || ant.x >= len(m[0]) || ant.y < 0 || ant.y >= len(m) {
-		if *dbgFlag {
-			log.Debugf("[DEBUG] Antenna out of bounds: (%d,%d)", ant.x, ant.y)
-		}
+		aoc_helpers.DebugLog(dbgFlag, "[DEBUG] Antenna out of bounds: (%d,%d)", ant.x, ant.y)
+
 		return
 	}
 
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Adding antenna at (%d,%d)", ant.x, ant.y)
-	}
+	aoc_helpers.DebugLog(dbgFlag, "[DEBUG] Adding antenna at (%d,%d)", ant.x, ant.y)
+
 	// Add the antinode to the map
 	m[ant.y][ant.x] = ANTINODE
 }
 
-func addAntiNodes(m [][]byte, antennas []coordT) [][]byte {
+func addAntiNodes(m [][]byte, antennas []coordT, iterative bool) [][]byte {
 	for i := range antennas {
 		for j := range antennas {
 			if j <= i {
@@ -62,40 +60,24 @@ func addAntiNodes(m [][]byte, antennas []coordT) [][]byte {
 			dx := antennas[j].x - antennas[i].x
 			dy := antennas[j].y - antennas[i].y
 
-			// Add the antinode to the map
-			addAntenna(m, coordT{x: antennas[i].x + 2*dx, y: antennas[i].y + 2*dy})
-			addAntenna(m, coordT{x: antennas[i].x - dx, y: antennas[i].y - dy})
-		}
-	}
-
-	return m
-}
-
-func addAntiNodes2(m [][]byte, antennas []coordT) [][]byte {
-	for i := range antennas {
-		for j := range antennas {
-			if j <= i {
-				// Skip the same antenna
-				continue
-			}
-
-			// Calculate the distance between the antennas
-			dx := antennas[j].x - antennas[i].x
-			dy := antennas[j].y - antennas[i].y
-
-			k := 0
-			for {
-				// Add the antinode to the map
-				addAntenna(m, coordT{x: antennas[i].x + k*dx, y: antennas[i].y + k*dy})
-				addAntenna(m, coordT{x: antennas[i].x - k*dx, y: antennas[i].y - k*dy})
-				k++
-				if abs(k*dx) > len(m[0]) || abs(k*dy) > len(m) {
-					break
+			if iterative {
+				// Iterative approach (from addAntiNodes2)
+				k := 0
+				for {
+					addAntenna(m, coordT{x: antennas[i].x + k*dx, y: antennas[i].y + k*dy})
+					addAntenna(m, coordT{x: antennas[i].x - k*dx, y: antennas[i].y - k*dy})
+					k++
+					if abs(k*dx) > len(m[0]) || abs(k*dy) > len(m) {
+						break
+					}
 				}
+			} else {
+				// Simple approach (from addAntiNodes)
+				addAntenna(m, coordT{x: antennas[i].x + 2*dx, y: antennas[i].y + 2*dy})
+				addAntenna(m, coordT{x: antennas[i].x - dx, y: antennas[i].y - dy})
 			}
 		}
 	}
-
 	return m
 }
 
@@ -112,9 +94,53 @@ func printMap(m [][]byte) {
 	}
 }
 
+func parseAntennas(lines [][]byte) map[byte][]coordT {
+	pairs := map[byte][]coordT{}
+	for i := range lines {
+		for j := range lines[i] {
+			if lines[i][j] != DOT {
+				// Add antenna to the map
+				pairs[lines[i][j]] = append(pairs[lines[i][j]], coordT{x: j, y: i})
+				aoc_helpers.DebugLog(dbgFlag, "[DEBUG] Found antenna %c at (%d,%d)", lines[i][j], j, i)
+			}
+		}
+	}
+	if *dbgFlag {
+		log.Debugf("[DEBUG] Antenna pairs: %v", pairs)
+	}
+	return pairs
+}
+
+func initializeAndFillMap(lines [][]byte, pairs map[byte][]coordT, iterative bool) [][]byte {
+	m := initializeMap(len(lines), len(lines[0]))
+	for _, v := range pairs {
+		m = addAntiNodes(m, v, iterative)
+	}
+
+	// Print the map
+
+	if *dbgFlag {
+		log.Debugf("[DEBUG] Antenna map:")
+		printMap(m)
+	}
+
+	return m
+}
+
+func countAntinodes(m [][]byte) int {
+	count := 0
+	for i := range m {
+		for j := range m[i] {
+			if m[i][j] == ANTINODE {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 func solvePart1(args []string) int {
 	fn := args[0]
-	res := 0
 
 	// Parse input file
 	lines, err := aoc_helpers.ReadLinesToByteSlice(fn)
@@ -123,54 +149,16 @@ func solvePart1(args []string) int {
 	}
 
 	// Find antennas, add them to the hashmap containing the antennas
-	pairs := map[byte][]coordT{}
-
-	for i := range lines {
-		for j := range lines[i] {
-			if lines[i][j] != DOT {
-				// Add antenna to the map
-				pairs[lines[i][j]] = append(pairs[lines[i][j]], coordT{x: j, y: i})
-				if *dbgFlag {
-					log.Debugf("[DEBUG] Found antenna %c at (%d,%d)", lines[i][j], j, i)
-				}
-			}
-		}
-
-	}
-
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Antenna pairs: %v", pairs)
-	}
+	pairs := parseAntennas(lines)
 
 	// Go through all found antennas and add antinodes to the map
-	m := initializeMap(len(lines), len(lines[0]))
+	m := initializeAndFillMap(lines, pairs, false)
 
-	for _, v := range pairs {
-		m = addAntiNodes(m, v)
-	}
-
-	// Print the map
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Antenna map:")
-		printMap(m)
-	}
-
-	// Count the number of unique antinode locations
-	for i := range m {
-		for j := range m[i] {
-			if m[i][j] == ANTINODE {
-				res++
-			}
-		}
-	}
-
-	// Print the number of unique antinode locations
-	return res
+	return countAntinodes(m)
 }
 
 func solvePart2(args []string) int {
 	fn := args[0]
-	res := 0
 
 	// Parse input file
 	lines, err := aoc_helpers.ReadLinesToByteSlice(fn)
@@ -179,48 +167,12 @@ func solvePart2(args []string) int {
 	}
 
 	// Find antennas, add them to the hashmap containing the antennas
-	pairs := map[byte][]coordT{}
-
-	for i := range lines {
-		for j := range lines[i] {
-			if lines[i][j] != DOT {
-				// Add antenna to the map
-				pairs[lines[i][j]] = append(pairs[lines[i][j]], coordT{x: j, y: i})
-				if *dbgFlag {
-					log.Debugf("[DEBUG] Found antenna %c at (%d,%d)", lines[i][j], j, i)
-				}
-			}
-		}
-
-	}
-
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Antenna pairs: %v", pairs)
-	}
+	pairs := parseAntennas(lines)
 
 	// Go through all found antennas and add antinodes to the map
-	m := initializeMap(len(lines), len(lines[0]))
+	m := initializeAndFillMap(lines, pairs, true)
 
-	for _, v := range pairs {
-		m = addAntiNodes2(m, v)
-	}
-
-	// Print the map
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Antenna map:")
-		printMap(m)
-	}
-
-	// Count the number of unique antinode locations
-	for i := range m {
-		for j := range m[i] {
-			if m[i][j] == ANTINODE {
-				res++
-			}
-		}
-	}
-
-	return res
+	return countAntinodes(m)
 }
 
 func init() {
@@ -237,11 +189,8 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	if *dbgFlag {
-		log.SetLevel(log.DebugLevel)
-	} else if *traceFlag {
-		log.SetLevel(log.TraceLevel)
-	}
+	// Set up logging
+	aoc_helpers.SetupLogging(dbgFlag, traceFlag)
 
 	if len(args) == 0 {
 		log.Fatalln("Please provide input file!")
