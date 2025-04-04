@@ -17,10 +17,10 @@ func TestSolvePart1(t *testing.T) {
 
 func TestSolvePart2(t *testing.T) {
 	tests := []aoc_helpers.File_resT{
-		//{Args: []string{"debug.txt"}, Res: 132},
-		//{Args: []string{"debug2.txt"}, Res: 169},
-		//{Args: []string{"example.txt"}, Res: 2858},
-		//{Args: []string{"input.txt"}, Res: 6418529470362},
+		{Args: []string{"debug.txt"}, Res: 2},
+		{Args: []string{"debug3.txt"}, Res: 13},
+		{Args: []string{"example.txt"}, Res: 81},
+		{Args: []string{"input.txt"}, Res: 1094},
 	}
 
 	aoc_helpers.ExecTests(t, solvePart2, tests)

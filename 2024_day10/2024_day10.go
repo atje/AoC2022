@@ -41,7 +41,7 @@ func walkTrails(m [][]byte, t [][]byte, i, j int, start byte) [][]byte {
 
 	if m[i][j] == '9' && start == '9' {
 		//fmt.Printf("[DEBUG] Found a trailhead at (%d, %d)\n", i, j)
-		t[i][j] = '1'
+		t[i][j] = t[i][j] + 1
 		return t
 	}
 
@@ -59,22 +59,9 @@ func walkTrails(m [][]byte, t [][]byte, i, j int, start byte) [][]byte {
 	return t
 }
 
-func solvePart1(args []string) int {
-	fn := args[0]
-
-	// Parse input file
-	m, err := aoc_helpers.ReadLinesToByteSlice(fn)
-	if err != nil {
-		log.Fatalf("readLines: %s", err)
-	}
-
-	// Print the map
-	if *dbgFlag {
-		log.Debugf("[DEBUG] Map:")
-		printMap(m)
-	}
-
+func findTrailheads(m [][]byte, useRating bool) int {
 	res := 0
+
 	// Go through the map and find trailheads
 	for i, row := range m {
 		for j, c := range row {
@@ -92,8 +79,12 @@ func solvePart1(args []string) int {
 				count := 0
 				for _, row := range t {
 					for _, c := range row {
-						if c == '1' {
-							count++
+						if c > 0 {
+							if useRating {
+								count += int(c)
+							} else {
+								count++
+							}
 						}
 					}
 				}
@@ -102,20 +93,43 @@ func solvePart1(args []string) int {
 			}
 		}
 	}
-
 	return res
+}
+
+func solvePart1(args []string) int {
+	fn := args[0]
+
+	// Parse input file
+	m, err := aoc_helpers.ReadLinesToByteSlice(fn)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
+
+	// Print the map
+	if *dbgFlag {
+		log.Debugf("[DEBUG] Map:")
+		printMap(m)
+	}
+
+	return findTrailheads(m, false)
 }
 
 func solvePart2(args []string) int {
 	fn := args[0]
 
 	// Parse input file
-	_, err := aoc_helpers.ReadLines(fn)
+	m, err := aoc_helpers.ReadLinesToByteSlice(fn)
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
 
-	return 0
+	// Print the map
+	if *dbgFlag {
+		log.Debugf("[DEBUG] Map:")
+		printMap(m)
+	}
+
+	return findTrailheads(m, true)
 }
 
 func init() {
