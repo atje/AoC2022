@@ -20,7 +20,7 @@ func TestSolvePart2(t *testing.T) {
 		{Args: []string{"debug.txt"}, Res: 132},
 		{Args: []string{"debug2.txt"}, Res: 169},
 		{Args: []string{"example.txt"}, Res: 2858},
-		//{Args: []string{"input.txt"}, Res: 6395800119709},
+		{Args: []string{"input.txt"}, Res: 6418529470362},
 	}
 
 	aoc_helpers.ExecTests(t, solvePart2, tests)

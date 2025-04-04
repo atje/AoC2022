@@ -56,12 +56,12 @@ func string2Blocks(s string) []blockT {
 		blocks = append(blocks, block)
 
 		id++
-		padding := 0
 		if i+1 < len(s) {
-			// Update the position to account for the space
-			padding = int(s[i+1]) - '0'
+			padding := int(s[i+1] - '0')
+			pos += length + padding
+		} else {
+			pos += length
 		}
-		pos += length + padding
 	}
 
 	return blocks
@@ -184,14 +184,10 @@ func compactBlocks2(blocks []blockT) []blockT {
 }
 
 func checkSum(blocks []blockT) int {
-	pos := 0
 	sum := 0
-
 	for _, block := range blocks {
-		pos = block.start
-		for i := block.len; i > 0; i-- {
+		for pos := block.start; pos < block.start+block.len; pos++ {
 			sum += pos * block.id
-			pos++
 		}
 	}
 	return sum
@@ -263,17 +259,23 @@ func init() {
 	log.SetLevel(log.WarnLevel)
 }
 
+func setupLogging() {
+	aoc_helpers.SetupLogging(dbgFlag, traceFlag)
+}
+
+func validateArgs(args []string) {
+	if len(args) == 0 {
+		log.Fatalln("Please provide input file!")
+	}
+}
+
 func main() {
 
 	flag.Parse()
 	args := flag.Args()
 
-	// Set up logging
-	aoc_helpers.SetupLogging(dbgFlag, traceFlag)
-
-	if len(args) == 0 {
-		log.Fatalln("Please provide input file!")
-	}
+	setupLogging()
+	validateArgs(args)
 
 	fmt.Println("part 1:", solvePart1(args))
 	fmt.Println("part 2:", solvePart2(args))
