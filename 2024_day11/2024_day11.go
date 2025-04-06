@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -23,48 +22,45 @@ func printStones(stones []string) {
 }
 
 func blinkOnce(stones []string) []string {
+	// Create a new slice to store the updated stones
+	newStones := make([]string, 0, len(stones)*2) // Preallocate capacity to avoid frequent resizing
 
-	for i := 0; i < len(stones); i++ {
-		n, err := strconv.Atoi(stones[i])
+	for _, stone := range stones {
+		n, err := strconv.Atoi(stone)
 		if err != nil {
 			log.Fatalf("Error converting string to int: %s", err)
 		}
+
 		if n == 0 {
-			//If the stone is engraved with the number 0, it is replaced by a stone engraved with the number 1.
-			stones[i] = "1"
-		} else if len(stones[i])%2 == 0 {
-			//If the stone is engraved with a number that has an even number of digits, it is replaced by two stones.
-			// The left half of the digits are engraved on the new left stone, and the right half of the digits
-			// are engraved on the new right stone.
-			// (The new numbers don't keep extra leading zeroes: 1000 would become stones 10 and 0.)
-			// Split the number into two halves
-			numStr := strconv.Itoa(n)
-			mid := len(numStr) / 2
-			left := numStr[:mid]
-			right := numStr[mid:]
-			// Remove leading zeros
-			left = strings.TrimLeft(left, "0")
-			right = strings.TrimLeft(right, "0")
-			if left == "" {
-				left = "0"
-			}
-			if right == "" {
-				right = "0"
-			}
-
-			stones[i] = left
-			stones = slices.Insert(stones, i+1, right)
-			i++
+			// If the stone is engraved with the number 0, replace it with "1"
+			newStones = append(newStones, "1")
 		} else {
-			//If none of the other rules apply, the stone is replaced by a new stone;
-			// the old stone's number multiplied by 2024 is engraved on the new stone.
-			stones[i] = strconv.Itoa(n * 2024)
+			numStr := strconv.Itoa(n)
+			if len(numStr)%2 == 0 {
+				// If the number has an even number of digits, split it into two halves
+				mid := len(numStr) / 2
+				left := strings.TrimLeft(numStr[:mid], "0")
+				right := strings.TrimLeft(numStr[mid:], "0")
 
+				// Handle empty strings after trimming leading zeros
+				if left == "" {
+					left = "0"
+				}
+				if right == "" {
+					right = "0"
+				}
+
+				newStones = append(newStones, left, right)
+			} else {
+				// Otherwise, multiply the number by 2024 and replace the stone
+				newStones = append(newStones, strconv.Itoa(n*2024))
+			}
 		}
 	}
-	return stones
 
+	return newStones
 }
+
 func solvePart1(args []string) int {
 	fn := args[0]
 	n := 1 // Default number of blinks
@@ -88,12 +84,13 @@ func solvePart1(args []string) int {
 	stones := strings.Split(lines[0], " ")
 
 	for i := 0; i < n; i++ {
+		fmt.Printf(".")
 		stones = blinkOnce(stones)
 		if *dbgFlag {
-			fmt.Printf("After %d blinks: ", i+1)
-			printStones(stones)
+			fmt.Printf("After %d blinks: %d stones\n", i+1, len(stones))
 		}
 	}
+	fmt.Println()
 
 	return len(stones)
 }
