@@ -7,7 +7,7 @@
 	"features": {
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers-contrib/features/bash-command:1": {}
+		"ghcr.io/devcontainers-extra/features/bash-command:1": {}
 	},
 	"customizations": {
 		"vscode": {
