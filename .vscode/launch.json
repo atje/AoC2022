@@ -22,7 +22,9 @@
       "options": [
         "input.txt",
         "example.txt",
-        "debug.txt"
+        "debug.txt",
+        "debug2.txt",
+        "debug3.txt"
       ],
       "default": "example.txt"
      }
