@@ -49,20 +49,26 @@ import (
 var dbgFlag = flag.Bool("d", false, "debug flag")
 var traceFlag = flag.Bool("t", false, "trace flag")
 
+type Bits uint64
+
+func Set(b Bits, flag int) Bits    { return b | 1<<flag }    // Set the bit
+func Clear(b Bits, flag int) Bits  { return b &^ 1 << flag } // Clear the bit
+func Toggle(b Bits, flag int) Bits { return b ^ 1<<flag }    // Toggle the bit
+func Has(b Bits, flag int) bool    { return b&1<<flag != 0 } // Check if the bit is set
+
 // The graph to hold the valves and their connections
 // The valveFlowMap to hold the flow rates of the valves
 var graph *dijkstra.Graph
-var valveFlowMap map[string]int
+var valveFlowMap map[int]int
+var numValves int
 
-// Add this at the top of the file
+// memo to hold the calculated pressure for each state
 var memo map[string]int
 
 // Helper to create a unique key for memoization
-func stateKey(curValve string, closedValves []string, minutes int) string {
-	key := curValve + fmt.Sprintf("-%d-", minutes)
-	for _, v := range closedValves {
-		key += v + ","
-	}
+func stateKey(curValve int, closedValves Bits, minutes int) string {
+	key := fmt.Sprintf("%d-%d-%d", curValve, minutes, closedValves)
+
 	return key
 }
 
@@ -88,7 +94,7 @@ func parseLine(line string) {
 
 	if graph == nil {
 		graph = dijkstra.NewGraph()
-		valveFlowMap = make(map[string]int, 0)
+		valveFlowMap = make(map[int]int, 0)
 	}
 	// Add valve to graph
 	graph.AddMappedVertex(m[1])
@@ -102,7 +108,8 @@ func parseLine(line string) {
 		graph.AddMappedArc(m[1], tunnel, 1) // 1 minute to move between valves
 	}
 	// Add flow rate to valveFlowMap
-	valveFlowMap[m[1]] = flowRate
+	id, _ := graph.GetMapping(m[1])
+	valveFlowMap[id] = flowRate
 }
 
 func parseFile(fn string) {
@@ -118,21 +125,26 @@ func parseFile(fn string) {
 	}
 }
 
+/*
 // Remove a string from a slice of strings
 // Returns a new slice with the string removed
 // If the string is not found, the original slice is returned
-func remove(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
+
+	func remove(s []int, r int) []int {
+		for i, v := range s {
+			if v == r {
+				return append(s[:i], s[i+1:]...)
+			}
 		}
+		return s
 	}
-	return s
-}
+*/
+func calcReleasedPressure(indent string, curValve int, closedValves Bits, minutes int) int {
+	nextValve := -1
 
-func calcReleasedPressure(indent, curValve string, closedValves []string, minutes int) int {
-	nextValve := ""
-
+	if *dbgFlag {
+		fmt.Printf("%stime %d min - Current valve: %d, closed valves: %b\n", indent, minutes, curValve, closedValves)
+	}
 	if minutes <= 0 {
 		return 0
 	}
@@ -145,43 +157,42 @@ func calcReleasedPressure(indent, curValve string, closedValves []string, minute
 
 	maxPressure := 0
 	// For each valve in the list of closed valves, find the shortest path to it from the current valve
-	for _, valve := range closedValves {
+	for closedValve := 0; closedValve < numValves; closedValve++ {
 		min := minutes
 
-		if valve == curValve {
+		if !Has(closedValves, closedValve) || closedValve == curValve {
 			continue // Skip the current valve
 		}
 
-		curID, _ := graph.GetMapping(curValve)
-		valveID, _ := graph.GetMapping(valve)
-		path, err := graph.Shortest(curID, valveID)
+		//		curID, _ := graph.GetMapping(curValve)
+		//		valveID, _ := graph.GetMapping(valve)
+		path, err := graph.Shortest(curValve, closedValve)
 
 		if err != nil {
-			log.Fatalf("Error finding shortest path from %s to %s: %s", curValve, valve, err)
+			log.Fatalf("Error finding shortest path from %d to %d: %s", curValve, closedValve, err)
 		}
 
 		min -= (int)(path.Distance) + 1
 		pressure := 0
 		if min > 0 {
 			// Calculate the pressure released by opening the valve
-			pressure = valveFlowMap[valve] * min
+			pressure = valveFlowMap[closedValve] * min
 		} else {
 			if *dbgFlag {
-				fmt.Printf("Not enough time to open valve %s, time left: %d\n", valve, min)
+				fmt.Printf("Not enough time to open valve %d, time left: %d\n", closedValve, min)
 			}
 		}
 
-		cv := make([]string, len(closedValves))
-		_ = copy(cv, closedValves)
+		cv := Clear(closedValves, closedValve) // Remove the valve from the closed valves
 
-		added := calcReleasedPressure(indent+"  ", valve, remove(cv, valve), min)
+		added := calcReleasedPressure(indent+"  ", closedValve, cv, min)
 		if added+pressure > maxPressure {
 			maxPressure = added + pressure
-			nextValve = valve
+			nextValve = closedValve
 		}
 	}
 	if *dbgFlag {
-		fmt.Printf("%stime %d min - Max pressure from %s is %d, next valve: %s\n", indent, minutes, curValve, maxPressure, nextValve)
+		fmt.Printf("%stime %d min - Max pressure from %d is %d, next valve: %d\n", indent, minutes, curValve, maxPressure, nextValve)
 	}
 
 	memo[key] = maxPressure
@@ -198,16 +209,21 @@ func solvePart1(args []string) int {
 	// Parse input file
 	parseFile(fn)
 
-	// Find all valves with flow rate > 0
-	valves := make([]string, 0)
+	// Find all valves with flow rate > 0, create bit array to represent them
+
+	var valves Bits
 	for valve, flow := range valveFlowMap {
 		if flow > 0 {
-			valves = append(valves, valve)
+			valves = Set(valves, valve)
+		}
+		if *dbgFlag {
+			fmt.Printf("Valve %d has flow rate %d, bit: %64b\n", valve, flow, valves)
 		}
 	}
 
 	memo = make(map[string]int)
-	return calcReleasedPressure("", cur, valves, minutes)
+	curID, _ := graph.GetMapping(cur)
+	return calcReleasedPressure("", curID, valves, minutes)
 }
 
 func init() {
