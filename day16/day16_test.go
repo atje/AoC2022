@@ -7,7 +7,7 @@ import (
 
 var p1tests = []aoc_helpers.File_resT{
 	{Args: []string{"example.txt"}, Res: 1651},
-	//{Args: []string{"input.txt"}, Res: 2359},
+	{Args: []string{"input.txt"}, Res: 2359},
 }
 
 func TestSolveDay16Part1(t *testing.T) {

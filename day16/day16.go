@@ -49,20 +49,27 @@ import (
 var dbgFlag = flag.Bool("d", false, "debug flag")
 var traceFlag = flag.Bool("t", false, "trace flag")
 
+type Bits uint64
+
+func Set(b Bits, flag int) Bits    { return b | (1 << flag) }        // Set the bit
+func Clear(b Bits, flag int) Bits  { return b &^ (1 << flag) }       // Clear the bit
+func Toggle(b Bits, flag int) Bits { return b ^ (1 << flag) }        // Toggle the bit
+func Has(b Bits, flag int) bool    { return (b & (1 << flag)) != 0 } // Check if the bit is set
+
 // The graph to hold the valves and their connections
 // The valveFlowMap to hold the flow rates of the valves
 var graph *dijkstra.Graph
-var valveFlowMap map[string]int
+var valveFlowMap map[int]int
+var numValves int
 
-// Add this at the top of the file
+// memo to hold the calculated pressure for each state
 var memo map[string]int
+var distArr [][]int // Distance from 1st valve to 2nd valve
 
 // Helper to create a unique key for memoization
-func stateKey(curValve string, closedValves []string, minutes int) string {
-	key := curValve + fmt.Sprintf("-%d-", minutes)
-	for _, v := range closedValves {
-		key += v + ","
-	}
+func stateKey(curValve int, closedValves Bits, minutes int) string {
+	key := fmt.Sprintf("%d-%d-%d", curValve, minutes, closedValves)
+
 	return key
 }
 
@@ -86,10 +93,6 @@ func parseLine(line string) {
 
 	flowRate, _ := strconv.Atoi(m[2])
 
-	if graph == nil {
-		graph = dijkstra.NewGraph()
-		valveFlowMap = make(map[string]int, 0)
-	}
 	// Add valve to graph
 	graph.AddMappedVertex(m[1])
 
@@ -102,37 +105,38 @@ func parseLine(line string) {
 		graph.AddMappedArc(m[1], tunnel, 1) // 1 minute to move between valves
 	}
 	// Add flow rate to valveFlowMap
-	valveFlowMap[m[1]] = flowRate
+	id, _ := graph.GetMapping(m[1])
+	valveFlowMap[id] = flowRate
 }
 
 func parseFile(fn string) {
 
-	// Read file
+	// Read file into lines
 	lines, err := aoc_helpers.ReadLines(fn)
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
 
+	// Initialize the graph and valveFlowMap
+	graph = dijkstra.NewGraph()
+	valveFlowMap = make(map[int]int, 0)
+
+	// Parse each line in the file
 	for _, line := range lines {
 		parseLine(line)
 	}
 }
 
-// Remove a string from a slice of strings
-// Returns a new slice with the string removed
-// If the string is not found, the original slice is returned
-func remove(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
+// Calculate maximum released pressure using recursion to test all possible path
+// within given time limits
+// Works on n number of people & elephants
+// Returns total released pressure over time
+func calcReleasedPressure(indent string, curValve int, closedValves Bits, minutes int) int {
+	nextValve := -1
+
+	if *dbgFlag {
+		fmt.Printf("%stime %d min - Current valves: %v, closed valves: %b\n", indent, minutes, curValve, closedValves)
 	}
-	return s
-}
-
-func calcReleasedPressure(indent, curValve string, closedValves []string, minutes int) int {
-	nextValve := ""
-
 	if minutes <= 0 {
 		return 0
 	}
@@ -145,69 +149,91 @@ func calcReleasedPressure(indent, curValve string, closedValves []string, minute
 
 	maxPressure := 0
 	// For each valve in the list of closed valves, find the shortest path to it from the current valve
-	for _, valve := range closedValves {
+	for closedValve := 0; closedValve < numValves; closedValve++ {
 		min := minutes
 
-		if valve == curValve {
+		if !Has(closedValves, closedValve) || closedValve == curValve {
+			if *dbgFlag {
+				fmt.Printf("Skipping valve %d, closedValves = %b\n", closedValve, closedValves)
+			}
 			continue // Skip the current valve
 		}
+		/*
+			path, err := graph.Shortest(curValve, closedValve)
 
-		curID, _ := graph.GetMapping(curValve)
-		valveID, _ := graph.GetMapping(valve)
-		path, err := graph.Shortest(curID, valveID)
-
-		if err != nil {
-			log.Fatalf("Error finding shortest path from %s to %s: %s", curValve, valve, err)
-		}
-
-		min -= (int)(path.Distance) + 1
+			if err != nil {
+				log.Fatalf("Error finding shortest path from %d to %d: %s", curValve, closedValve, err)
+			}
+		*/
+		min -= distArr[curValve][closedValve] + 1
+		//min -= (int)(path.Distance) + 1
 		pressure := 0
 		if min > 0 {
 			// Calculate the pressure released by opening the valve
-			pressure = valveFlowMap[valve] * min
+			pressure = valveFlowMap[closedValve] * min
 		} else {
 			if *dbgFlag {
-				fmt.Printf("Not enough time to open valve %s, time left: %d\n", valve, min)
+				fmt.Printf("Not enough time to open valve %d, time left: %d\n", closedValve, min)
 			}
 		}
 
-		cv := make([]string, len(closedValves))
-		_ = copy(cv, closedValves)
+		cv := Clear(closedValves, closedValve) // Remove the valve from the closed valves
 
-		added := calcReleasedPressure(indent+"  ", valve, remove(cv, valve), min)
+		added := calcReleasedPressure(indent+"  ", closedValve, cv, min)
 		if added+pressure > maxPressure {
 			maxPressure = added + pressure
-			nextValve = valve
+			nextValve = closedValve
 		}
 	}
+	memo[key] = maxPressure
 	if *dbgFlag {
-		fmt.Printf("%stime %d min - Max pressure from %s is %d, next valve: %s\n", indent, minutes, curValve, maxPressure, nextValve)
+		fmt.Printf("%stime %d min - Max pressure from %d is %d, next valve: %d\n", indent, minutes, curValve, maxPressure, nextValve)
 	}
 
-	memo[key] = maxPressure
 	return maxPressure
 }
 
 func solvePart1(args []string) int {
 
 	fn := args[0]
-	//minutes, _ := strconv.Atoi(args[1])
 	minutes := 30
 	cur := "AA"
 
 	// Parse input file
 	parseFile(fn)
 
-	// Find all valves with flow rate > 0
-	valves := make([]string, 0)
+	// Find all valves with flow rate > 0, create bit array to represent them
+	var valves Bits
 	for valve, flow := range valveFlowMap {
 		if flow > 0 {
-			valves = append(valves, valve)
+			valves = Set(valves, valve)
+		}
+		if *dbgFlag {
+			fmt.Printf("Valve %d has flow rate %d, bit: %64b\n", valve, flow, valves)
 		}
 	}
+	numValves = len(valveFlowMap)
 
 	memo = make(map[string]int)
-	return calcReleasedPressure("", cur, valves, minutes)
+	curID, _ := graph.GetMapping(cur)
+
+	// Pre-calcluate shortest path from starting valve to any closed valve
+	distArr = make([][]int, numValves)
+	// Pre-calculate shortest path from a valve to any other
+	// Set a ridiculusly high distance value if they are not reachable
+	// Store distance in 2D array
+	for i := 0; i < numValves; i++ {
+		distArr[i] = make([]int, numValves)
+		for j := 0; j < numValves; j++ {
+			path, err := graph.Shortest(i, j)
+			if err == nil {
+				distArr[i][j] = (int)(path.Distance)
+			} else {
+				distArr[i][j] = 50000000
+			}
+		}
+	}
+	return calcReleasedPressure("", curID, valves, minutes)
 }
 
 func init() {
