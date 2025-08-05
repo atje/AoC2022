@@ -93,10 +93,6 @@ func parseLine(line string) {
 
 	flowRate, _ := strconv.Atoi(m[2])
 
-	if graph == nil {
-		graph = dijkstra.NewGraph()
-		valveFlowMap = make(map[int]int, 0)
-	}
 	// Add valve to graph
 	graph.AddMappedVertex(m[1])
 
@@ -115,12 +111,17 @@ func parseLine(line string) {
 
 func parseFile(fn string) {
 
-	// Read file
+	// Read file into lines
 	lines, err := aoc_helpers.ReadLines(fn)
 	if err != nil {
 		log.Fatalf("readLines: %s", err)
 	}
 
+	// Initialize the graph and valveFlowMap
+	graph = dijkstra.NewGraph()
+	valveFlowMap = make(map[int]int, 0)
+
+	// Parse each line in the file
 	for _, line := range lines {
 		parseLine(line)
 	}
