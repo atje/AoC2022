@@ -1,6 +1,6 @@
 module AoC2022
 
-go 1.21.0
+go 1.24.0
 
 require (
 	github.com/RyanCarrier/dijkstra v1.4.0
