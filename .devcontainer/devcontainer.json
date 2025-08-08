@@ -14,7 +14,8 @@
 			"extensions": [
 				"github.vscode-github-actions",
 				"DavidAnson.vscode-markdownlint",
-				"yzhang.markdown-all-in-one"
+				"yzhang.markdown-all-in-one",
+				"redhat.vscode-yaml"
 			]
 		}
 	}
